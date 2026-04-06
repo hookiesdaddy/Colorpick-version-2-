@@ -39,11 +39,11 @@ async def health():
 async def extract(
     file: Optional[UploadFile] = File(default=None),
     url: Optional[str] = Form(default=None),
-    skip_neutrals: bool = Form(default=True),
+    skip_neutrals: str = Form(default='1'),
 ):
     """Extract the dominant color. Returns hex + rgb. Does NOT set lights."""
     image_bytes, source = await _get_image_bytes(file, url)
-    return {**_extract(image_bytes, skip_neutrals=skip_neutrals), "source": source}
+    return {**_extract(image_bytes, skip_neutrals=skip_neutrals not in ('0', 'false', 'False')), "source": source}
 
 
 @app.post("/extract/url")

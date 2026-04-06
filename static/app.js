@@ -234,7 +234,7 @@ form.addEventListener('submit', async (e) => {
       if (!fileInput.files[0]) { showError('Please select an image file.'); return; }
       const fd = new FormData();
       fd.append('file', fileInput.files[0]);
-      fd.append('skip_neutrals', skipNeutrals);
+      fd.append('skip_neutrals', skipNeutrals ? '1' : '0');
       response = await fetch('/extract', { method: 'POST', body: fd, headers });
     } else {
       const url = urlInput.value.trim();
