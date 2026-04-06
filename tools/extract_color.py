@@ -20,6 +20,11 @@ def extract_dominant_color(image_bytes: bytes) -> dict:
     # Re-open after verify() (verify() closes the file)
     img = Image.open(BytesIO(image_bytes))
 
+    # Downsample large images before processing to reduce memory/CPU usage
+    MAX_DIM = 800
+    if max(img.size) > MAX_DIM:
+        img.thumbnail((MAX_DIM, MAX_DIM), Image.LANCZOS)
+
     # colorthief struggles with RGBA and palette modes — convert to RGB
     if img.mode in ("RGBA", "P", "LA"):
         if img.mode == "P":
@@ -38,7 +43,7 @@ def extract_dominant_color(image_bytes: bytes) -> dict:
 
     try:
         color_thief = ColorThief(buf)
-        palette = color_thief.get_palette(color_count=2, quality=1)
+        palette = color_thief.get_palette(color_count=2, quality=5)
     except Exception as e:
         raise RuntimeError(f"Color extraction failed: {e}")
 
