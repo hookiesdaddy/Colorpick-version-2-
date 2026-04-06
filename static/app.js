@@ -260,7 +260,7 @@ form.addEventListener('submit', async (e) => {
 // ── Toggle listeners ──────────────────────────────────────────────────────────
 brighterToggle.addEventListener('change', updateActiveChip);
 prefsToggle.addEventListener('change', () => {
-  prefsExpand.classList.toggle('open', prefsToggle.checked);
+  prefsExpand.classList.toggle('hidden', !prefsToggle.checked);
   updateActiveChip();
 });
 

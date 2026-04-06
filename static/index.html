@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=12" />
+  <link rel="stylesheet" href="/static/style.css?v=13" />
 </head>
 <body>
   <div class="bg-orbs">
@@ -93,6 +93,9 @@
           </div>
         </div>
 
+        <button id="set-lights-btn" class="set-lights-btn">Set Lights</button>
+        <div id="lights-status" class="lights-status hidden"></div>
+
         <label class="toggle-row">
           <span class="toggle-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -118,13 +121,10 @@
             <span class="toggle-slider"></span>
           </div>
         </label>
-
-        <button id="set-lights-btn" class="set-lights-btn">Set Lights</button>
-        <div id="lights-status" class="lights-status hidden"></div>
       </div>
 
       <!-- Always-visible bottom toggles -->
-      <div class="bottom-toggles">
+      <div class="bottom-toggles" id="bottom-toggles">
         <label class="toggle-row">
           <span class="toggle-label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -151,7 +151,7 @@
           </div>
         </label>
 
-        <div id="prefs-expand" class="prefs-expand">
+        <div id="prefs-expand" class="prefs-expand hidden">
           <ul id="color-prefs-list" class="color-prefs-list"></ul>
         </div>
       </div>
@@ -193,6 +193,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=12"></script>
+  <script src="/static/app.js?v=13"></script>
 </body>
 </html>
