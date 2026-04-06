@@ -15,7 +15,7 @@ def _saturation(r, g, b):
     return d / (2 - mx - mn) if l > 0.5 else d / (mx + mn)
 
 
-def _is_neutral(r, g, b, threshold=0.12):
+def _is_neutral(r, g, b, threshold=0.18):
     """True if colour is near-black, near-white, or near-grey."""
     return _saturation(r, g, b) < threshold
 
@@ -65,9 +65,9 @@ def extract_dominant_color(image_bytes: bytes) -> dict:
     if img.mode != "RGB":
         img = img.convert("RGB")
 
-    # Re-encode to JPEG bytes for colorthief
+    # Re-encode to PNG (lossless) so colorthief sees exact colors
     buf = BytesIO()
-    img.save(buf, format="JPEG", quality=95)
+    img.save(buf, format="PNG")
     buf.seek(0)
 
     try:
