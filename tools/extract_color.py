@@ -5,7 +5,7 @@ from PIL import Image
 
 
 def _saturation(r, g, b):
-    """Return HSL saturation (0-1) for an RGB triple."""
+    """Return HSL saturation (0–1) for an RGB triple."""
     r_, g_, b_ = r / 255, g / 255, b / 255
     mx, mn = max(r_, g_, b_), min(r_, g_, b_)
     if mx == mn:
@@ -15,15 +15,16 @@ def _saturation(r, g, b):
     return d / (2 - mx - mn) if l > 0.5 else d / (mx + mn)
 
 
-def _is_neutral(r, g, b, threshold=0.18):
-    """True if colour is near-black, near-white, or near-grey."""
-    return _saturation(r, g, b) < threshold
+def _is_neutral(r, g, b):
+    """True if the colour is near-black, near-white, or near-grey."""
+    return _saturation(r, g, b) < 0.18 or max(r, g, b) < 40 or min(r, g, b) > 215
 
 
 def _pick_top2(palette):
     """
-    From a palette list, return the two most vibrant (saturated) colours.
-    Falls back to the raw palette order if everything is neutral.
+    From a palette list return the two most vibrant colours.
+    Falls back to the full palette sorted by saturation if fewer
+    than 2 vibrant colours are found.
     """
     vibrant = [c for c in palette if not _is_neutral(*c)]
     pool = vibrant if len(vibrant) >= 2 else palette
@@ -33,10 +34,28 @@ def _pick_top2(palette):
     return primary, secondary
 
 
+def _vibrant_strip(img):
+    """
+    Return a 1-row image containing only the vibrant (non-neutral) pixels
+    from img, so ColorThief only sees colours worth picking.
+    Falls back to the original image if too few vibrant pixels exist.
+    """
+    pixels = list(img.getdata())
+    vibrant = [
+        (r, g, b) for r, g, b in pixels
+        if not _is_neutral(r, g, b)
+    ]
+    if len(vibrant) < 50:
+        return img  # image is almost entirely neutral — use as-is
+    strip = Image.new("RGB", (len(vibrant), 1))
+    strip.putdata(vibrant)
+    return strip
+
+
 def extract_dominant_color(image_bytes: bytes) -> dict:
     """
     Accepts raw image bytes.
-    Returns primary + secondary colors as hex and rgb.
+    Returns primary + secondary colours as hex and rgb.
     Raises ValueError for unreadable/unsupported images.
     Raises RuntimeError for colorthief failures.
     """
@@ -49,7 +68,7 @@ def extract_dominant_color(image_bytes: bytes) -> dict:
     # Re-open after verify() (verify() closes the file)
     img = Image.open(BytesIO(image_bytes))
 
-    # Downsample large images before processing to reduce memory/CPU usage
+    # Downsample large images to cap memory/CPU usage
     MAX_DIM = 800
     if max(img.size) > MAX_DIM:
         img.thumbnail((MAX_DIM, MAX_DIM), Image.LANCZOS)
@@ -65,15 +84,17 @@ def extract_dominant_color(image_bytes: bytes) -> dict:
     if img.mode != "RGB":
         img = img.convert("RGB")
 
-    # Re-encode to PNG (lossless) so colorthief sees exact colors
+    # Strip neutrals before ColorThief so outlines/highlights don't dominate
+    work = _vibrant_strip(img)
+
+    # Encode to PNG (lossless) for ColorThief
     buf = BytesIO()
-    img.save(buf, format="PNG")
+    work.save(buf, format="PNG")
     buf.seek(0)
 
     try:
         color_thief = ColorThief(buf)
-        # Extract a wider palette so we have candidates to filter
-        palette = color_thief.get_palette(color_count=8, quality=5)
+        palette = color_thief.get_palette(color_count=8, quality=1)
     except Exception as e:
         raise RuntimeError(f"Color extraction failed: {e}")
 
