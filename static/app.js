@@ -28,6 +28,9 @@ const lightsStatus      = document.getElementById('lights-status');
 const errorDiv          = document.getElementById('error');
 const logoDot           = document.getElementById('logo-dot');
 const colorPrefsList    = document.getElementById('color-prefs-list');
+const reloadBtn         = document.getElementById('reload-btn');
+const optionsBtn        = document.getElementById('options-btn');
+const optionsPanel      = document.getElementById('options-panel');
 
 // Settings
 const mainView          = document.getElementById('main-view');
@@ -255,6 +258,22 @@ form.addEventListener('submit', async (e) => {
     submitBtn.disabled = false;
     if (!submitBtn.classList.contains('color-revealed')) btnText.textContent = 'Extract Color';
   }
+});
+
+// ── Reload ────────────────────────────────────────────────────────────────────
+reloadBtn.addEventListener('click', () => {
+  resetButton();
+  fileInput.value = '';
+  fileLabelText.textContent = 'Drop an image or click to browse';
+  dropzone.classList.remove('has-file');
+  urlInput.value = '';
+});
+
+// ── Options panel ─────────────────────────────────────────────────────────────
+optionsBtn.addEventListener('click', () => {
+  const isOpen = !optionsPanel.classList.contains('hidden');
+  optionsPanel.classList.toggle('hidden', isOpen);
+  optionsBtn.classList.toggle('open', !isOpen);
 });
 
 // ── Toggle listeners ──────────────────────────────────────────────────────────
