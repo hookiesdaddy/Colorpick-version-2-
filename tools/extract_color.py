@@ -20,17 +20,19 @@ def _is_neutral(r, g, b):
     return _saturation(r, g, b) < 0.18 or max(r, g, b) < 40 or min(r, g, b) > 215
 
 
-def _pick_top2(palette):
+def _pick_top2(palette, skip_neutrals=True):
     """
-    From a palette list return the two most vibrant colours.
-    Falls back to the full palette sorted by saturation if fewer
-    than 2 vibrant colours are found.
+    From a palette list return the two most dominant colours.
+    When skip_neutrals is True, filters out near-black/white/grey first.
+    Falls back to raw palette order if filtering leaves fewer than 2.
     """
-    vibrant = [c for c in palette if not _is_neutral(*c)]
-    pool = vibrant if len(vibrant) >= 2 else palette
-    pool_sorted = sorted(pool, key=lambda c: _saturation(*c), reverse=True)
-    primary   = pool_sorted[0]
-    secondary = pool_sorted[1] if len(pool_sorted) > 1 else pool_sorted[0]
+    if skip_neutrals:
+        vibrant = [c for c in palette if not _is_neutral(*c)]
+        pool = vibrant if len(vibrant) >= 2 else palette
+    else:
+        pool = palette
+    primary   = pool[0]
+    secondary = pool[1] if len(pool) > 1 else pool[0]
     return primary, secondary
 
 
@@ -98,7 +100,7 @@ def extract_dominant_color(image_bytes: bytes, skip_neutrals: bool = True) -> di
     except Exception as e:
         raise RuntimeError(f"Color extraction failed: {e}")
 
-    (r, g, b), (r2, g2, b2) = _pick_top2(palette)
+    (r, g, b), (r2, g2, b2) = _pick_top2(palette, skip_neutrals=skip_neutrals)
 
     return {
         "hex": "#{:02x}{:02x}{:02x}".format(r, g, b),
