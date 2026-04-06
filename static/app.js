@@ -313,12 +313,12 @@ setLightsBtn.addEventListener('click', async () => {
 });
 
 // ── Copy hex ──────────────────────────────────────────────────────────────────
-hexPrimary.addEventListener('click', () => copyHex(hexPrimaryText, 'primary'));
-hexSecondary.addEventListener('click', () => copyHex(hexSecondaryText, 'secondary'));
-function copyHex(el, key) {
-  const val = el.textContent;
-  if (!val || val === '—') return;
-  navigator.clipboard.writeText(val).then(() => {
+hexPrimary.addEventListener('click', () => copyHex('primary'));
+hexSecondary.addEventListener('click', () => copyHex('secondary'));
+function copyHex(key) {
+  const val = key === 'primary' ? lastPrimary?.hex : lastSecondary?.hex;
+  if (!val) return;
+  navigator.clipboard.writeText(val.toUpperCase()).then(() => {
     const toast = document.querySelector(`.copied-toast[data-for="${key}"]`);
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 1500);
