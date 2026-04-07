@@ -119,6 +119,26 @@ async def set_light(
     return {"hex": hex_color, "rgb": {"r": r, "g": g, "b": b}, "lights": light_results}
 
 
+@app.post("/set-light-hex")
+async def set_light_hex(
+    request: Request,
+    hex: Optional[str] = Form(default=None),
+    x_govee_api_key: Optional[str] = Header(default=None),
+):
+    """Set lights from a hex string. Accepts hex as a form field or ?hex= query param."""
+    hex_val = hex or request.query_params.get("hex") or ""
+    hex_val = hex_val.strip().lstrip("#")
+    if len(hex_val) != 6:
+        raise HTTPException(status_code=422, detail="Invalid hex color — expected 6 hex digits")
+    try:
+        r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid hex color")
+    api_key = x_govee_api_key or settings.govee_api_key
+    light_results = await _set_all_lights(r, g, b, api_key)
+    return {"hex": f"#{hex_val}", "rgb": {"r": r, "g": g, "b": b}, "lights": light_results}
+
+
 @app.post("/govee/test")
 async def test_govee(x_govee_api_key: Optional[str] = Header(default=None)):
     """Validate a Govee API key by listing devices."""
