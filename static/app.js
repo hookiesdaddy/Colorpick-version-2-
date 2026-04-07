@@ -607,6 +607,7 @@ function updateMusicUI() {
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
   noService.classList.toggle('hidden', hasCredentials || syncOn);
   npHero.classList.toggle('hidden', !syncOn);
+  reloadBtn.style.display = syncOn ? 'none' : '';
 }
 
 function openUploadSheet() {
@@ -615,6 +616,7 @@ function openUploadSheet() {
 }
 
 function closeUploadSheet() {
+  if (!uploadSheet.classList.contains('open')) return;
   uploadSheet.classList.remove('open');
   uploadSheet.addEventListener('transitionend', () => uploadSheet.classList.add('hidden'), { once: true });
 }
