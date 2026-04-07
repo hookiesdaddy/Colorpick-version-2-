@@ -56,8 +56,14 @@ const lfmSaveBtn        = document.getElementById('lfm-save-btn');
 const lfmTestBtn        = document.getElementById('lfm-test-btn');
 const lfmStatus         = document.getElementById('lfm-status');
 const lfmSyncToggle     = document.getElementById('lfm-sync-toggle');
-const nowPlaying        = document.getElementById('now-playing');
-const npText            = document.getElementById('np-text');
+const connectPrompt     = document.getElementById('connect-prompt');
+const connectPromptBtn  = document.getElementById('connect-prompt-btn');
+const npHero            = document.getElementById('np-hero');
+const npArt             = document.getElementById('np-art');
+const npTitle           = document.getElementById('np-title');
+const npArtist          = document.getElementById('np-artist');
+const npSyncLabel       = document.getElementById('np-sync-label');
+const manualInput       = document.getElementById('manual-input');
 
 // ── Color families ────────────────────────────────────────────────────────────
 const DEFAULT_FAMILIES = [
@@ -593,79 +599,97 @@ async function lfmGetNowPlaying(user, key) {
   return { title: track.name, artist: track.artist['#text'], art, isLive };
 }
 
+function updateMusicUI() {
+  const hasCredentials = !!(localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY));
+  const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
+
+  if (syncOn) {
+    connectPrompt.classList.add('hidden');
+    manualInput.classList.add('hidden');
+    npHero.classList.remove('hidden');
+  } else {
+    manualInput.classList.remove('hidden');
+    npHero.classList.add('hidden');
+    connectPrompt.classList.toggle('hidden', hasCredentials);
+  }
+}
+
 async function lfmPoll() {
   const user = localStorage.getItem(LS_LFM_USER) || '';
   const key  = localStorage.getItem(LS_LFM_KEY)  || '';
   if (!user || !key) return;
   try {
     const track = await lfmGetNowPlaying(user, key);
-    if (!track || !track.art) {
-      nowPlaying.classList.remove('syncing');
-      npText.textContent = 'No scrobbles found — is your scrobbler running?';
-      nowPlaying.classList.remove('hidden');
+    if (!track) {
+      npHero.classList.remove('syncing');
+      npTitle.textContent  = 'Nothing playing';
+      npArtist.textContent = 'Is your scrobbler running?';
+      npSyncLabel.textContent = 'Waiting…';
       return;
     }
     if (!track.isLive) {
-      nowPlaying.classList.remove('syncing');
-      npText.textContent = `Last played: ${track.artist} — ${track.title}`;
-      nowPlaying.classList.remove('hidden');
+      npHero.classList.remove('syncing');
+      npTitle.textContent  = track.title;
+      npArtist.textContent = track.artist;
+      npSyncLabel.textContent = 'Last played — waiting for new track';
+      if (track.art) npArt.src = track.art;
       return;
     }
-    const trackKey = `${track.artist} — ${track.title}`;
-    npText.textContent = trackKey;
-    nowPlaying.classList.remove('hidden');
+
+    const trackKey = `${track.artist}|||${track.title}`;
+    npTitle.textContent  = track.title;
+    npArtist.textContent = track.artist;
+    if (track.art) npArt.src = track.art;
 
     if (trackKey !== lfmLastTrackKey) {
       lfmLastTrackKey = trackKey;
-      nowPlaying.classList.remove('syncing');
-      // Extract color from album art URL then set lights
+      npHero.classList.remove('syncing');
+      npSyncLabel.textContent = 'Syncing…';
       try {
         const headers = {};
         const apiKey = loadApiKey();
         if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
         const skipNeutrals = loadSkipNeutrals();
-        const analyzeResp = await fetch(`/extract/url`, {
+        const analyzeResp = await fetch('/extract/url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify({ url: track.art, skip_neutrals: skipNeutrals }),
         });
         if (!analyzeResp.ok) return;
         const colorData = await analyzeResp.json();
-        // Show result in the UI
         showResult(colorData);
-        // Set lights
         const useSecondary = loadPreferSec();
-        const rgb = useSecondary && colorData.secondary ? colorData.secondary.rgb : colorData.rgb;
         const hexColor = useSecondary && colorData.secondary ? colorData.secondary.hex : colorData.hex;
         await fetch('/set-light-hex', {
           method: 'POST',
           headers,
           body: (() => { const fd = new FormData(); fd.append('hex', hexColor); return fd; })(),
         });
-        nowPlaying.classList.add('syncing');
-      } catch {}
+        npHero.classList.add('syncing');
+        npSyncLabel.textContent = 'Synced ✓';
+      } catch { npSyncLabel.textContent = 'Sync failed'; }
     } else {
-      nowPlaying.classList.add('syncing');
+      npHero.classList.add('syncing');
+      npSyncLabel.textContent = 'Synced ✓';
     }
   } catch (e) {
-    nowPlaying.classList.remove('hidden');
-    nowPlaying.classList.remove('syncing');
-    npText.textContent = 'Last.fm error — check credentials';
+    npHero.classList.remove('syncing');
+    npSyncLabel.textContent = 'Last.fm error — check credentials';
   }
 }
 
 function startLfmSync() {
   if (lfmPollTimer) return;
+  updateMusicUI();
   lfmPoll();
   lfmPollTimer = setInterval(lfmPoll, 10000);
-  nowPlaying.classList.remove('hidden');
 }
 
 function stopLfmSync() {
   clearInterval(lfmPollTimer);
   lfmPollTimer = null;
   lfmLastTrackKey = null;
-  nowPlaying.classList.add('hidden');
+  updateMusicUI();
 }
 
 function showLfmStatus(type, msg) {
@@ -673,6 +697,12 @@ function showLfmStatus(type, msg) {
   lfmStatus.className = `key-status ${type}`;
 }
 
+connectPromptBtn.addEventListener('click', () => {
+  mainView.classList.add('hidden');
+  settingsView.classList.remove('hidden');
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildPrefsList();
+updateMusicUI();
 if (localStorage.getItem(LS_LFM_SYNC) === 'true') startLfmSync();
