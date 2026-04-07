@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=26" />
+  <link rel="stylesheet" href="/static/style.css?v=27" />
 </head>
 <body>
   <div class="bg-orbs">
@@ -26,7 +26,6 @@
         </div>
         <div class="header-actions">
           <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
-            <!-- API / plug icon -->
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
             </svg>
@@ -34,71 +33,37 @@
         </div>
       </header>
 
-      <!-- ── Connect prompt (shown when no service connected) ── -->
-      <div id="connect-prompt" class="connect-prompt hidden">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-        </svg>
-        <div class="connect-prompt-text">
-          <span>Connect a streaming service to auto-sync your lights with music</span>
-          <button id="connect-prompt-btn" class="connect-prompt-link">Go to Settings →</button>
-        </div>
-      </div>
-
-      <!-- ── Now-playing hero (shown when sync is active) ── -->
-      <div id="np-hero" class="np-hero hidden">
-        <img id="np-art" class="np-art" src="" alt="" />
-        <div class="np-info">
-          <div id="np-title" class="np-title">—</div>
-          <div id="np-artist" class="np-artist">—</div>
-          <div id="np-sync-status" class="np-sync-status">
-            <span class="np-dot"></span>
-            <span id="np-sync-label">Syncing…</span>
-          </div>
-        </div>
-        <label class="np-manual-btn" for="file-input" title="Upload image manually">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+      <!-- ── No service state ── -->
+      <div id="no-service" class="no-service hidden">
+        <div class="no-service-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
           </svg>
-        </label>
-      </div>
-
-      <!-- ── Upload / URL tabs (hidden when sync active) ── -->
-      <div id="manual-input" class="manual-input">
-      <div class="tabs">
-        <button class="tab active" data-mode="upload">Upload</button>
-        <button class="tab" data-mode="url">URL</button>
-      </div>
-
-      <form id="form">
-        <div id="upload-mode" class="mode">
-          <label class="dropzone" for="file-input" id="dropzone">
-            <div class="dropzone-inner">
-              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
-              <span id="file-label-text" class="dropzone-text">Drop an image or click to browse</span>
-              <span class="dropzone-hint">PNG, JPG, GIF, WebP up to 10MB</span>
-            </div>
-            <input type="file" id="file-input" accept="image/*" />
-          </label>
         </div>
+        <p class="no-service-title">No streaming service connected</p>
+        <p class="no-service-desc">Connect Last.fm to automatically sync your lights with music</p>
+        <button id="connect-prompt-btn" class="connect-cta-btn">Connect in Settings →</button>
+      </div>
 
-        <div id="url-mode" class="mode hidden">
-          <div class="url-input-wrap">
-            <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+      <!-- ── Now-playing hero ── -->
+      <div id="np-hero" class="np-hero hidden">
+        <div class="np-art-wrap">
+          <img id="np-art" class="np-art" src="" alt="" />
+          <div class="np-art-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
             </svg>
-            <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
           </div>
         </div>
+        <div class="np-sync-badge" id="np-sync-badge">
+          <span class="np-dot"></span>
+          <span id="np-sync-label">Waiting…</span>
+        </div>
+        <div id="np-title" class="np-title">—</div>
+        <div id="np-artist" class="np-artist">—</div>
+      </div>
 
-        <button type="submit" class="submit-btn">
-          <span class="btn-text">Extract Color</span>
-        </button>
-      </form>
-      </div><!-- /manual-input -->
-
+      <!-- ── Color result ── -->
       <div id="result" class="result hidden">
         <div class="color-row">
           <div class="color-chip" id="primary-chip" title="Click to use this color">
@@ -132,16 +97,21 @@
         <div id="lights-status" class="lights-status hidden"></div>
       </div>
 
-      <!-- ── Controls bar (always visible) ── -->
+      <!-- ── Controls bar ── -->
       <div class="controls-bar">
         <button class="icon-btn" id="reload-btn" title="Re-run extraction" aria-label="Re-run extraction">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
         </button>
-        <button class="icon-btn" id="clear-btn" title="Clear image and result" aria-label="Clear" style="display:none">
+        <button class="icon-btn" id="clear-btn" title="Clear" aria-label="Clear" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <button class="icon-btn upload-toggle-btn" id="upload-sheet-btn" title="Manual upload" aria-label="Manual upload">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
           </svg>
         </button>
         <button class="options-btn" id="options-btn" aria-label="Options">
@@ -221,7 +191,51 @@
       </div>
 
       <div id="error" class="error hidden"></div>
+    </div>
 
+    <!-- ── Upload sheet (slide-up) ── -->
+    <div id="upload-sheet" class="upload-sheet hidden">
+      <div class="sheet-header">
+        <span class="sheet-title">Manual Upload</span>
+        <button class="icon-btn" id="sheet-close-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-mode="upload">Upload</button>
+        <button class="tab" data-mode="url">URL</button>
+      </div>
+
+      <form id="form">
+        <div id="upload-mode" class="mode">
+          <label class="dropzone" for="file-input" id="dropzone">
+            <div class="dropzone-inner">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span id="file-label-text" class="dropzone-text">Drop an image or click to browse</span>
+              <span class="dropzone-hint">PNG, JPG, GIF, WebP up to 10MB</span>
+            </div>
+            <input type="file" id="file-input" accept="image/*" />
+          </label>
+        </div>
+
+        <div id="url-mode" class="mode hidden">
+          <div class="url-input-wrap">
+            <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+            </svg>
+            <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <span class="btn-text">Extract Color</span>
+        </button>
+      </form>
     </div>
 
     <!-- ── Settings view ── -->
@@ -282,6 +296,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=21"></script>
+  <script src="/static/app.js?v=22"></script>
 </body>
 </html>

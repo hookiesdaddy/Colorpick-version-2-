@@ -56,14 +56,16 @@ const lfmSaveBtn        = document.getElementById('lfm-save-btn');
 const lfmTestBtn        = document.getElementById('lfm-test-btn');
 const lfmStatus         = document.getElementById('lfm-status');
 const lfmSyncToggle     = document.getElementById('lfm-sync-toggle');
-const connectPrompt     = document.getElementById('connect-prompt');
 const connectPromptBtn  = document.getElementById('connect-prompt-btn');
+const noService         = document.getElementById('no-service');
 const npHero            = document.getElementById('np-hero');
 const npArt             = document.getElementById('np-art');
 const npTitle           = document.getElementById('np-title');
 const npArtist          = document.getElementById('np-artist');
 const npSyncLabel       = document.getElementById('np-sync-label');
-const manualInput       = document.getElementById('manual-input');
+const uploadSheet       = document.getElementById('upload-sheet');
+const uploadSheetBtn    = document.getElementById('upload-sheet-btn');
+const sheetCloseBtn     = document.getElementById('sheet-close-btn');
 
 // ── Color families ────────────────────────────────────────────────────────────
 const DEFAULT_FAMILIES = [
@@ -439,6 +441,7 @@ function showResult(data) {
   rgbSecondary.textContent     = `${lastSecondary.rgb.r}, ${lastSecondary.rgb.g}, ${lastSecondary.rgb.b}`;
 
   lightsStatus.classList.add('hidden');
+  closeUploadSheet();
   setTimeout(() => { result.classList.remove('hidden'); updateActiveChip(); updateClearBtn(); }, 350);
 }
 
@@ -602,16 +605,18 @@ async function lfmGetNowPlaying(user, key) {
 function updateMusicUI() {
   const hasCredentials = !!(localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY));
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
+  noService.classList.toggle('hidden', hasCredentials || syncOn);
+  npHero.classList.toggle('hidden', !syncOn);
+}
 
-  if (syncOn) {
-    connectPrompt.classList.add('hidden');
-    manualInput.classList.add('hidden');
-    npHero.classList.remove('hidden');
-  } else {
-    manualInput.classList.remove('hidden');
-    npHero.classList.add('hidden');
-    connectPrompt.classList.toggle('hidden', hasCredentials);
-  }
+function openUploadSheet() {
+  uploadSheet.classList.remove('hidden');
+  requestAnimationFrame(() => uploadSheet.classList.add('open'));
+}
+
+function closeUploadSheet() {
+  uploadSheet.classList.remove('open');
+  uploadSheet.addEventListener('transitionend', () => uploadSheet.classList.add('hidden'), { once: true });
 }
 
 async function lfmPoll() {
@@ -701,6 +706,9 @@ connectPromptBtn.addEventListener('click', () => {
   mainView.classList.add('hidden');
   settingsView.classList.remove('hidden');
 });
+
+uploadSheetBtn.addEventListener('click', openUploadSheet);
+sheetCloseBtn.addEventListener('click', closeUploadSheet);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildPrefsList();
