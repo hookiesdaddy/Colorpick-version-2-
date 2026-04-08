@@ -419,35 +419,33 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .section-title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
 .section-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
 
-/* ── Service picker cards ────────────────────────────────────────────────────── */
-.service-picker { display: flex; gap: 0.65rem; }
-.service-card {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 0.45rem; padding: 1rem 0.5rem; position: relative;
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  background: var(--input-bg); cursor: pointer;
-  transition: border-color 0.15s, background 0.15s; font-family: inherit;
-  color: var(--muted);
+/* ── Settings rows (collapsible) ─────────────────────────────────────────────── */
+.settings-section { display: flex; flex-direction: column; gap: 0.5rem; }
+.settings-row {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  overflow: hidden; transition: border-color 0.15s;
 }
-.service-card:hover { border-color: var(--border-hover); color: var(--text); }
-.service-card.active {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  color: var(--text);
+.settings-row.active { border-color: var(--accent); }
+.settings-row-header {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1rem; background: var(--input-bg);
+  border: none; cursor: pointer; font-family: inherit;
+  color: var(--text); transition: background 0.15s;
 }
-.service-name { font-size: 0.72rem; font-weight: 600; }
-.service-badge {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
-  border-radius: 0 0 calc(var(--radius-sm) - 1.5px) calc(var(--radius-sm) - 1.5px);
-  padding: 0.22rem 0;
-  text-align: center;
+.settings-row-header:hover { background: color-mix(in srgb, var(--border) 50%, var(--input-bg)); }
+.settings-row-left { display: flex; align-items: center; gap: 0.6rem; }
+.settings-row-name { font-size: 0.85rem; font-weight: 600; }
+.settings-row-badge {
+  font-size: 0.68rem; font-weight: 600; color: var(--accent);
 }
-.service-badge.hidden { display: none; }
-.service-config { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.25rem; }
-.service-config.hidden { display: none; }
+.settings-row-badge.hidden { display: none; }
+.settings-row-chevron { color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+.settings-row.open .settings-row-chevron { transform: rotate(180deg); }
+.settings-row-body {
+  padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.settings-row-body.hidden { display: none; }
 .am-notice { display: flex; gap: 0.5rem; align-items: flex-start; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; font-size: 0.75rem; color: var(--muted); line-height: 1.45; }
 .am-notice svg { flex-shrink: 0; margin-top: 0.1rem; color: var(--accent); }
 .am-notice strong { font-weight: 500; color: var(--text); }

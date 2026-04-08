@@ -75,9 +75,15 @@ const lfmSaveBtn        = document.getElementById('lfm-save-btn');
 const lfmTestBtn        = document.getElementById('lfm-test-btn');
 const lfmStatus         = document.getElementById('lfm-status');
 
-// Service picker
+// Service rows
 const serviceLastfmBtn  = document.getElementById('service-applemusic-btn');
 const serviceSpotifyBtn = document.getElementById('service-spotify-btn');
+const serviceLastfmRow  = document.getElementById('service-applemusic-row');
+const serviceSpotifyRow = document.getElementById('service-spotify-row');
+const goveeRow          = document.getElementById('govee-row');
+const goveeRowBtn       = document.getElementById('govee-row-btn');
+const goveeConfig       = document.getElementById('govee-config');
+const goveeBadge        = document.getElementById('govee-badge');
 const lastfmConfig      = document.getElementById('lastfm-config');
 const spotifyConfig     = document.getElementById('spotify-config');
 const lastfmBadge       = document.getElementById('lastfm-badge');
@@ -1070,23 +1076,66 @@ function showLfmStatus(type, msg) {
 
 // ── Service picker UI ─────────────────────────────────────────────────────────
 function updateServiceCards() {
-  const lfmConnected = !!(localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY));
+  const lfmConnected     = !!(localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY));
   const spotifyConnected = !!localStorage.getItem(LS_SPOTIFY_TOKEN);
+  const goveeConnected   = !!loadApiKey();
   lastfmBadge.classList.toggle('hidden', !lfmConnected);
   spotifyBadge.classList.toggle('hidden', !spotifyConnected);
+  if (goveeBadge) goveeBadge.classList.toggle('hidden', !goveeConnected);
+  // Highlight active rows
+  if (serviceLastfmRow)  serviceLastfmRow.classList.toggle('active',  !!(localStorage.getItem(LS_ACTIVE_SERVICE) === 'lastfm'  && lastfmConfig && !lastfmConfig.classList.contains('hidden')));
+  if (serviceSpotifyRow) serviceSpotifyRow.classList.toggle('active', !!(localStorage.getItem(LS_ACTIVE_SERVICE) === 'spotify' && spotifyConfig && !spotifyConfig.classList.contains('hidden')));
+}
+
+function toggleServiceRow(service) {
+  const isLastfm = service === 'lastfm';
+  const row    = isLastfm ? serviceLastfmRow  : serviceSpotifyRow;
+  const config = isLastfm ? lastfmConfig      : spotifyConfig;
+  const otherRow    = isLastfm ? serviceSpotifyRow : serviceLastfmRow;
+  const otherConfig = isLastfm ? spotifyConfig     : lastfmConfig;
+
+  const isOpen = !config.classList.contains('hidden');
+
+  // If clicking already-open row — just close it (deselect)
+  if (isOpen) {
+    config.classList.add('hidden');
+    row.classList.remove('open', 'active');
+    return;
+  }
+
+  // Close the other row
+  otherConfig.classList.add('hidden');
+  otherRow.classList.remove('open', 'active');
+
+  // Open this row and mark it as selected service
+  config.classList.remove('hidden');
+  row.classList.add('open', 'active');
+  localStorage.setItem(LS_ACTIVE_SERVICE, service);
 }
 
 function selectService(service) {
+  // Used programmatically (e.g. OAuth callback) — force open
   const isLastfm = service === 'lastfm';
   localStorage.setItem(LS_ACTIVE_SERVICE, service);
-  serviceLastfmBtn.classList.toggle('active', isLastfm);
-  serviceSpotifyBtn.classList.toggle('active', !isLastfm);
-  lastfmConfig.classList.toggle('hidden', !isLastfm);
-  spotifyConfig.classList.toggle('hidden', isLastfm);
+  const row    = isLastfm ? serviceLastfmRow  : serviceSpotifyRow;
+  const config = isLastfm ? lastfmConfig      : spotifyConfig;
+  const otherRow    = isLastfm ? serviceSpotifyRow : serviceLastfmRow;
+  const otherConfig = isLastfm ? spotifyConfig     : lastfmConfig;
+  otherConfig.classList.add('hidden');
+  otherRow.classList.remove('open', 'active');
+  config.classList.remove('hidden');
+  row.classList.add('open', 'active');
 }
 
-serviceLastfmBtn.addEventListener('click', () => selectService('lastfm'));
-serviceSpotifyBtn.addEventListener('click', () => selectService('spotify'));
+serviceLastfmBtn.addEventListener('click', () => toggleServiceRow('lastfm'));
+serviceSpotifyBtn.addEventListener('click', () => toggleServiceRow('spotify'));
+
+// Govee row toggle
+goveeRowBtn.addEventListener('click', () => {
+  const isOpen = !goveeConfig.classList.contains('hidden');
+  goveeConfig.classList.toggle('hidden', isOpen);
+  goveeRow.classList.toggle('open', !isOpen);
+});
 
 // ── Spotify OAuth PKCE ────────────────────────────────────────────────────────
 function generateVerifier(len = 64) {
@@ -1350,9 +1399,7 @@ buildPrefsList();
 updateServiceCards();
 updateSpotifyUI();
 updatePlaybackControls();
-// Restore active service card
-const _savedService = localStorage.getItem(LS_ACTIVE_SERVICE);
-if (_savedService) selectService(_savedService);
+// Restore active service — rows start closed, don't auto-open on load
 updateMusicUI();
 
 // Handle Spotify OAuth callback

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=49" />
+  <link rel="stylesheet" href="/static/style.css?v=50" />
 </head>
 <body>
   <div class="bg-orbs">
@@ -339,93 +339,111 @@
         <span class="settings-title">Settings</span>
       </header>
 
-      <!-- ── Music Integration ── -->
+      <!-- ── Music Services ── -->
       <section class="settings-section">
-        <h3 class="section-title">Music Integration</h3>
-        <p class="section-desc">Connect a service to auto-sync your lights with music.</p>
+        <h3 class="section-title">Music Services</h3>
 
-        <div class="service-picker">
-          <button class="service-card" id="service-applemusic-btn">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="30" height="30">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M23.994 6.124a9.23 9.23 0 0 0-.24-2.19c-.317-1.31-1.048-2.31-2.08-3.043a8.902 8.902 0 0 0-2.332-1.097c-.535-.16-1.088-.256-1.638-.3a24.87 24.87 0 0 0-1.233-.05H7.53c-.419 0-.843.02-1.265.05-.56.041-1.116.145-1.657.306A8.9 8.9 0 0 0 2.26.86C1.233 1.59.504 2.583.186 3.89.025 4.508-.004 5.137 0 5.773v12.452c0 .396.016.792.05 1.187.043.6.143 1.199.313 1.78.447 1.622 1.55 2.87 3.09 3.563.59.27 1.215.434 1.85.507.653.079 1.311.112 1.967.111h11.073a9.07 9.07 0 0 0 1.188-.074 6.845 6.845 0 0 0 1.89-.55c.79-.37 1.47-.904 2.004-1.58a6.87 6.87 0 0 0 1.21-2.61c.152-.588.224-1.19.248-1.795.016-.38.021-.76.021-1.14V6.386c0-.088-.003-.175-.01-.262zM15.5 13.8a4.19 4.19 0 0 1-.17 1.224 3.24 3.24 0 0 1-1.974 2.134 3.33 3.33 0 0 1-1.173.21 3.295 3.295 0 0 1-3.31-3.322c0-1.83 1.48-3.32 3.31-3.32.504 0 .983.11 1.42.315V5.04l-7.37 1.665v7.234a4.19 4.19 0 0 1-.17 1.224 3.24 3.24 0 0 1-1.974 2.134 3.33 3.33 0 0 1-1.173.21A3.295 3.295 0 0 1 2.886 14c0-1.83 1.48-3.32 3.31-3.32.504 0 .983.11 1.42.315V7.327l9.37-2.118v7.591z"/>
-            </svg>
-            <span class="service-name">Apple Music</span>
-            <span class="service-badge hidden" id="lastfm-badge">Connected</span>
+        <!-- Apple Music row -->
+        <div class="settings-row" id="service-applemusic-row">
+          <button class="settings-row-header" id="service-applemusic-btn">
+            <div class="settings-row-left">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M23.994 6.124a9.23 9.23 0 0 0-.24-2.19c-.317-1.31-1.048-2.31-2.08-3.043a8.902 8.902 0 0 0-2.332-1.097c-.535-.16-1.088-.256-1.638-.3a24.87 24.87 0 0 0-1.233-.05H7.53c-.419 0-.843.02-1.265.05-.56.041-1.116.145-1.657.306A8.9 8.9 0 0 0 2.26.86C1.233 1.59.504 2.583.186 3.89.025 4.508-.004 5.137 0 5.773v12.452c0 .396.016.792.05 1.187.043.6.143 1.199.313 1.78.447 1.622 1.55 2.87 3.09 3.563.59.27 1.215.434 1.85.507.653.079 1.311.112 1.967.111h11.073a9.07 9.07 0 0 0 1.188-.074 6.845 6.845 0 0 0 1.89-.55c.79-.37 1.47-.904 2.004-1.58a6.87 6.87 0 0 0 1.21-2.61c.152-.588.224-1.19.248-1.795.016-.38.021-.76.021-1.14V6.386c0-.088-.003-.175-.01-.262zM15.5 13.8a4.19 4.19 0 0 1-.17 1.224 3.24 3.24 0 0 1-1.974 2.134 3.33 3.33 0 0 1-1.173.21 3.295 3.295 0 0 1-3.31-3.322c0-1.83 1.48-3.32 3.31-3.32.504 0 .983.11 1.42.315V5.04l-7.37 1.665v7.234a4.19 4.19 0 0 1-.17 1.224 3.24 3.24 0 0 1-1.974 2.134 3.33 3.33 0 0 1-1.173.21A3.295 3.295 0 0 1 2.886 14c0-1.83 1.48-3.32 3.31-3.32.504 0 .983.11 1.42.315V7.327l9.37-2.118v7.591z"/>
+              </svg>
+              <span class="settings-row-name">Apple Music</span>
+              <span class="settings-row-badge hidden" id="lastfm-badge">● Connected</span>
+            </div>
+            <svg class="settings-row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
           </button>
-          <button class="service-card" id="service-spotify-btn">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-            </svg>
-            <span class="service-name">Spotify</span>
-            <span class="service-badge hidden" id="spotify-badge">Connected</span>
-          </button>
+          <div id="lastfm-config" class="settings-row-body hidden">
+            <div class="am-notice">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+              <span><strong>Apple Music doesn't offer a public API</strong> for reading now-playing data. To sync your lights with Apple Music, you'll need a free <strong>Last.fm</strong> account — it scrobbles tracks from Apple Music in real time and exposes them via API.</span>
+            </div>
+            <p class="section-desc" style="margin-bottom:0.5rem;margin-top:0.25rem">Get a free API key at <strong>last.fm/api</strong>, then enter your details below.</p>
+            <div class="api-key-row">
+              <input type="text" id="lfm-user-input" class="api-key-input" placeholder="Last.fm username" autocomplete="off" />
+            </div>
+            <div class="api-key-row">
+              <input type="text" id="lfm-key-input" class="api-key-input" placeholder="Last.fm API key" autocomplete="off" />
+            </div>
+            <div class="api-btn-row">
+              <button id="lfm-save-btn" class="action-btn primary-btn">Save</button>
+              <button id="lfm-test-btn" class="action-btn">Test</button>
+            </div>
+            <div id="lfm-status" class="key-status hidden"></div>
+          </div>
         </div>
 
-        <!-- Apple Music / Last.fm config -->
-        <div id="lastfm-config" class="service-config hidden">
-          <div class="am-notice">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-            <span><strong>Apple Music doesn't offer a public API</strong> for reading now-playing data. To sync your lights with Apple Music, you'll need a free <strong>Last.fm</strong> account — it scrobbles tracks from Apple Music in real time and exposes them via API.</span>
+        <!-- Spotify row -->
+        <div class="settings-row" id="service-spotify-row">
+          <button class="settings-row-header" id="service-spotify-btn">
+            <div class="settings-row-left">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+              </svg>
+              <span class="settings-row-name">Spotify</span>
+              <span class="settings-row-badge hidden" id="spotify-badge">● Connected</span>
+            </div>
+            <svg class="settings-row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+          </button>
+          <div id="spotify-config" class="settings-row-body hidden">
+            <p class="section-desc" style="margin-bottom:0.5rem">Create an app at <strong>developer.spotify.com</strong> and add this page's URL as a redirect URI.</p>
+            <div class="api-key-row">
+              <input type="text" id="spotify-client-id-input" class="api-key-input" placeholder="Spotify Client ID" autocomplete="off" />
+            </div>
+            <div class="api-btn-row">
+              <button id="spotify-connect-btn" class="action-btn primary-btn">Connect Spotify</button>
+              <button id="spotify-disconnect-btn" class="action-btn hidden">Disconnect</button>
+            </div>
+            <div id="spotify-status" class="key-status hidden"></div>
+            <label class="toggle-row" id="spotify-playback-row" style="margin-top:0.25rem">
+              <span class="toggle-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+                Show playback controls
+              </span>
+              <input type="checkbox" id="spotify-playback-toggle" class="toggle-input" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
           </div>
-          <p class="section-desc" style="margin-bottom:0.5rem;margin-top:0.25rem">Get a free API key at <strong>last.fm/api</strong>, then enter your details below.</p>
-          <div class="api-key-row">
-            <input type="text" id="lfm-user-input" class="api-key-input" placeholder="Last.fm username" autocomplete="off" />
-          </div>
-          <div class="api-key-row">
-            <input type="text" id="lfm-key-input" class="api-key-input" placeholder="Last.fm API key" autocomplete="off" />
-          </div>
-          <div class="api-btn-row">
-            <button id="lfm-save-btn" class="action-btn primary-btn">Save</button>
-            <button id="lfm-test-btn" class="action-btn">Test</button>
-          </div>
-          <div id="lfm-status" class="key-status hidden"></div>
-        </div>
-
-        <!-- Spotify config -->
-        <div id="spotify-config" class="service-config hidden">
-          <p class="section-desc" style="margin-bottom:0.5rem">Create an app at <strong>developer.spotify.com</strong> and add this page's URL as a redirect URI.</p>
-          <div class="api-key-row">
-            <input type="text" id="spotify-client-id-input" class="api-key-input" placeholder="Spotify Client ID" autocomplete="off" />
-          </div>
-          <div class="api-btn-row">
-            <button id="spotify-connect-btn" class="action-btn primary-btn">Connect Spotify</button>
-            <button id="spotify-disconnect-btn" class="action-btn hidden">Disconnect</button>
-          </div>
-          <div id="spotify-status" class="key-status hidden"></div>
-          <label class="toggle-row" id="spotify-playback-row" style="margin-top:0.25rem">
-            <span class="toggle-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
-              Show playback controls
-            </span>
-            <input type="checkbox" id="spotify-playback-toggle" class="toggle-input" />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
         </div>
       </section>
 
-      <!-- ── Govee Setup ── -->
-      <section class="settings-section" style="margin-top:1.5rem">
-        <h3 class="section-title">Govee Setup</h3>
-        <p class="section-desc">Your API key is stored locally in the browser.</p>
-        <div class="api-key-row">
-          <input type="password" id="api-key-input" class="api-key-input" placeholder="Paste your Govee API key…" autocomplete="off" />
-          <button id="api-key-toggle" class="icon-btn small" title="Show / hide">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+      <!-- ── Lights ── -->
+      <section class="settings-section">
+        <h3 class="section-title">Lights</h3>
+        <div class="settings-row" id="govee-row">
+          <button class="settings-row-header" id="govee-row-btn">
+            <div class="settings-row-left">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg>
+              <span class="settings-row-name">Govee</span>
+              <span class="settings-row-badge hidden" id="govee-badge">● Connected</span>
+            </div>
+            <svg class="settings-row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
           </button>
+          <div class="settings-row-body hidden" id="govee-config">
+            <p class="section-desc">Your API key is stored locally in the browser.</p>
+            <div class="api-key-row">
+              <input type="password" id="api-key-input" class="api-key-input" placeholder="Paste your Govee API key…" autocomplete="off" />
+              <button id="api-key-toggle" class="icon-btn small" title="Show / hide">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
+            <div class="api-btn-row">
+              <button id="save-key-btn" class="action-btn primary-btn">Save Key</button>
+              <button id="test-key-btn" class="action-btn">Test Connection</button>
+            </div>
+            <div id="key-status" class="key-status hidden"></div>
+          </div>
         </div>
-        <div class="api-btn-row">
-          <button id="save-key-btn" class="action-btn primary-btn">Save Key</button>
-          <button id="test-key-btn" class="action-btn">Test Connection</button>
-        </div>
-        <div id="key-status" class="key-status hidden"></div>
       </section>
     </div>
 
   </div>
 
-  <script src="/static/app.js?v=44"></script>
+  <script src="/static/app.js?v=45"></script>
 </body>
 </html>
