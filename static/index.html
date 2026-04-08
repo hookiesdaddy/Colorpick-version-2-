@@ -10,15 +10,6 @@
   <link rel="stylesheet" href="/static/style.css?v=51" />
 </head>
 <body>
-  <!-- SVG filter for Chromium: displacement map = real light refraction at glass edges -->
-  <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
-    <filter id="liquid-glass-filter" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
-      <feTurbulence type="turbulence" baseFrequency="0.018 0.025" numOctaves="2" seed="8" result="noise"/>
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="12" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
-      <feColorMatrix in="displaced" type="saturate" values="1.4"/>
-    </filter>
-  </svg>
-
   <div class="bg-orbs">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>

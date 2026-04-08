@@ -3,25 +3,18 @@
 /* ── Theme variables ────────────────────────────────────────────────────────── */
 :root {
   --bg: #0a0a0f;
-  --card-bg: rgba(20,20,32,0.45);
-  --border: rgba(255,255,255,0.12);
-  --border-hover: rgba(255,255,255,0.22);
+  --card-bg: rgba(18,18,28,0.55);
+  --border: rgba(255,255,255,0.10);
+  --border-hover: rgba(255,255,255,0.20);
   --text: #f0f0f0;
   --text-secondary: #aaaaaa;
   --muted: #666666;
   --subtle: rgba(255,255,255,0.07);
-  --input-bg: rgba(255,255,255,0.06);
-  --card-shadow:
-    0 4px 32px rgba(0,0,0,0.5),
-    0 1px 2px rgba(0,0,0,0.4),
-    /* asymmetric rim: bright top, dim bottom */
-    inset 0 1px 0 rgba(255,255,255,0.18),
-    inset 0 -1px 0 rgba(255,255,255,0.04),
-    inset 1px 0 0 rgba(255,255,255,0.10),
-    inset -1px 0 0 rgba(255,255,255,0.05);
-  --glass-highlight: rgba(255,255,255,0.09);
-  --glass-specular: rgba(255,255,255,0.18);
-  --orb-opacity: 0.55;
+  --input-bg: rgba(255,255,255,0.05);
+  --card-shadow: 0 0 0 1px rgba(255,255,255,0.07), 0 32px 80px rgba(0,0,0,0.65), 0 8px 24px rgba(0,0,0,0.4);
+  --glass-highlight: rgba(255,255,255,0.08);
+  --glass-specular: rgba(255,255,255,0.12);
+  --orb-opacity: 0.5;
   --radius: 24px;
   --radius-sm: 14px;
   --primary-color: #6366f1;
@@ -32,25 +25,19 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #d8d8e8;
-    --card-bg: rgba(255,255,255,0.38);
-    --border: rgba(255,255,255,0.75);
-    --border-hover: rgba(255,255,255,0.95);
+    --bg: #e8e8f0;
+    --card-bg: rgba(255,255,255,0.45);
+    --border: rgba(255,255,255,0.70);
+    --border-hover: rgba(255,255,255,0.90);
     --text: #111111;
     --text-secondary: #555555;
     --muted: #888888;
     --subtle: rgba(0,0,0,0.06);
-    --input-bg: rgba(255,255,255,0.45);
-    --card-shadow:
-      0 4px 32px rgba(0,0,0,0.10),
-      0 1px 3px rgba(0,0,0,0.07),
-      inset 0 1px 0 rgba(255,255,255,0.95),
-      inset 0 -1px 0 rgba(255,255,255,0.40),
-      inset 1px 0 0 rgba(255,255,255,0.70),
-      inset -1px 0 0 rgba(255,255,255,0.35);
-    --glass-highlight: rgba(255,255,255,0.55);
-    --glass-specular: rgba(255,255,255,0.90);
-    --orb-opacity: 0.28;
+    --input-bg: rgba(255,255,255,0.40);
+    --card-shadow: 0 0 0 1px rgba(255,255,255,0.6), 0 20px 60px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06);
+    --glass-highlight: rgba(255,255,255,0.60);
+    --glass-specular: rgba(255,255,255,0.80);
+    --orb-opacity: 0.25;
   }
 }
 
@@ -84,58 +71,33 @@ body {
 /* ── Card ───────────────────────────────────────────────────────────────────── */
 .card {
   position: relative; z-index: 1;
-  isolation: isolate;
   background: var(--card-bg);
-  /* Tighter blur (10px) keeps orb colors vivid through the glass;
-     brightness(1.08) simulates glass focusing some light;
-     saturate(220%) makes colors bleed through richly */
-  backdrop-filter: blur(10px) saturate(220%) brightness(1.08);
-  -webkit-backdrop-filter: blur(10px) saturate(220%) brightness(1.08);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
   border-radius: var(--radius);
   padding: 2rem;
   width: 100%; max-width: 440px;
   box-shadow: var(--card-shadow);
   overflow: hidden;
-  border: 1px solid var(--border);
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  /* Top highlight edge — simulates light catching the glass rim */
+  border: 1px solid var(--border);
 }
-/* Light streak — angled gradient from top-left, like light hitting the glass face */
+/* Inner top-edge specular highlight */
 .card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--glass-specular) 30%, var(--glass-specular) 70%, transparent 100%);
+  pointer-events: none; z-index: 2; border-radius: var(--radius) var(--radius) 0 0;
+}
+/* Subtle inner glow along left/top — light refraction */
+.card::after {
   content: '';
   position: absolute; inset: 0;
   border-radius: var(--radius);
-  background: linear-gradient(
-    158deg,
-    rgba(255,255,255,0.18) 0%,
-    rgba(255,255,255,0.06) 35%,
-    transparent 60%
-  );
-  pointer-events: none; z-index: 1;
-}
-/* Specular hot-spot — floating bright ellipse with screen blend = adds light only */
-.card::after {
-  content: '';
-  position: absolute;
-  top: -15%; left: 10%;
-  width: 65%; height: 50%;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255,255,255,0.16) 0%,
-    transparent 70%
-  );
-  mix-blend-mode: screen;
-  pointer-events: none; z-index: 2;
-  border-radius: 50%;
-}
-/* Chromium only: add SVG displacement for actual pixel-bending refraction */
-@supports (backdrop-filter: url(#x)) {
-  .card {
-    backdrop-filter: url(#liquid-glass-filter) blur(10px) saturate(220%) brightness(1.08);
-    -webkit-backdrop-filter: url(#liquid-glass-filter) blur(10px) saturate(220%) brightness(1.08);
-  }
-}
-@supports not (backdrop-filter: blur(1px)) {
-  .card { background: rgba(20,20,32,0.92); }
+  background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
 }
 
 /* ── View transitions ───────────────────────────────────────────────────────── */
@@ -185,11 +147,10 @@ header { display: flex; align-items: center; gap: 0.5rem; }
   width: 34px; height: 34px;
   border-radius: 10px; border: 1px solid var(--border);
   background: var(--input-bg);
-  backdrop-filter: blur(10px) saturate(200%) brightness(1.06);
-  -webkit-backdrop-filter: blur(10px) saturate(200%) brightness(1.06);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   color: var(--muted);
   cursor: pointer;
-  box-shadow: inset 0 1px 0 var(--glass-specular), inset 0 -1px 0 rgba(0,0,0,0.08);
   transition: color 0.15s, background 0.15s, border-color 0.15s;
   flex-shrink: 0;
 }
