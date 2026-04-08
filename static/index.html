@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=45" />
+  <link rel="stylesheet" href="/static/style.css?v=47" />
 </head>
 <body>
   <div class="bg-orbs">
@@ -71,6 +71,18 @@
         </div>
         <div id="np-title" class="np-title">Nothing playing</div>
         <div id="np-artist" class="np-artist">—</div>
+        <div id="playback-controls" class="playback-controls hidden">
+          <button class="playback-btn" id="playback-prev" title="Previous">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button class="playback-btn playback-play" id="playback-toggle" title="Play/Pause">
+            <svg id="playback-play-icon" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="playback-pause-icon" viewBox="0 0 24 24" fill="currentColor" width="22" height="22" class="hidden"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          <button class="playback-btn" id="playback-next" title="Next">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- ── Photo hero (photos mode) ── -->
@@ -380,6 +392,14 @@
             <button id="spotify-disconnect-btn" class="action-btn hidden">Disconnect</button>
           </div>
           <div id="spotify-status" class="key-status hidden"></div>
+          <label class="toggle-row" id="spotify-playback-row" style="margin-top:0.25rem">
+            <span class="toggle-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+              Show playback controls
+            </span>
+            <input type="checkbox" id="spotify-playback-toggle" class="toggle-input" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
         </div>
       </section>
 
@@ -406,6 +426,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=41"></script>
+  <script src="/static/app.js?v=42"></script>
 </body>
 </html>

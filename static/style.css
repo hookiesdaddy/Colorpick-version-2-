@@ -373,6 +373,14 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .np-title { font-size: 1.05rem; font-weight: 700; color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .np-artist { font-size: 0.85rem; color: var(--text-secondary); }
 .np-action-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.75rem; }
+.playback-controls { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.75rem; }
+.playback-controls.hidden { display: none; }
+.playback-btn { display: flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; border: none; background: var(--input-bg); color: var(--text); cursor: pointer; transition: background 0.15s, transform 0.1s; }
+.playback-btn:hover { background: var(--border); }
+.playback-btn:active { transform: scale(0.92); }
+.playback-play { width: 2.6rem; height: 2.6rem; background: #6366f1; color: #fff; }
+.playback-play:hover { background: #6366f1; filter: brightness(1.1); }
+#playback-play-icon.hidden, #playback-pause-icon.hidden { display: none; }
 
 /* ── Photo hero ─────────────────────────────────────────────────────────────── */
 .photo-art-wrap { cursor: pointer; }
@@ -434,8 +442,8 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .service-badge.hidden { display: none; }
 .service-config { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 0.25rem; }
 .service-config.hidden { display: none; }
-.am-notice { display: flex; gap: 0.5rem; align-items: flex-start; background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; font-size: 0.75rem; color: var(--muted); line-height: 1.45; }
-.am-notice svg { flex-shrink: 0; margin-top: 0.1rem; color: var(--accent); }
+.am-notice { display: flex; gap: 0.5rem; align-items: flex-start; background: color-mix(in srgb, #6366f1 8%, transparent); border: 1px solid color-mix(in srgb, #6366f1 25%, transparent); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; font-size: 0.75rem; color: var(--muted); line-height: 1.45; }
+.am-notice svg { flex-shrink: 0; margin-top: 0.1rem; color: #6366f1; }
 .am-notice strong { font-weight: 500; color: var(--text); }
 
 /* ── History view ───────────────────────────────────────────────────────────── */

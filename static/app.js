@@ -88,6 +88,15 @@ const spotifyClientIdInput  = document.getElementById('spotify-client-id-input')
 const spotifyConnectBtn     = document.getElementById('spotify-connect-btn');
 const spotifyDisconnectBtn  = document.getElementById('spotify-disconnect-btn');
 const spotifyStatus         = document.getElementById('spotify-status');
+const spotifyPlaybackToggle = document.getElementById('spotify-playback-toggle');
+
+// Playback controls
+const playbackControls  = document.getElementById('playback-controls');
+const playbackPrev      = document.getElementById('playback-prev');
+const playbackToggleBtn = document.getElementById('playback-toggle');
+const playbackNext      = document.getElementById('playback-next');
+const playbackPlayIcon  = document.getElementById('playback-play-icon');
+const playbackPauseIcon = document.getElementById('playback-pause-icon');
 const connectPromptBtn  = document.getElementById('connect-prompt-btn');
 const noService         = document.getElementById('no-service');
 const npHero            = document.getElementById('np-hero');
@@ -141,6 +150,7 @@ const LS_SPOTIFY_CLIENT_ID  = 'colorpick_spotify_client_id';
 const LS_SPOTIFY_TOKEN      = 'colorpick_spotify_token';
 const LS_SPOTIFY_REFRESH    = 'colorpick_spotify_refresh';
 const LS_SPOTIFY_EXPIRES    = 'colorpick_spotify_expires';
+const LS_SPOTIFY_PLAYBACK   = 'colorpick_spotify_playback';
 const HISTORY_MAX       = 30;
 
 const loadApiKey       = () => localStorage.getItem(LS_KEY) || '';
@@ -908,6 +918,8 @@ function updateMusicUI() {
 
   // Keep gradient visible when auto is active and has colors
   if (syncOn && lastPrimary) result.classList.remove('hidden');
+
+  updatePlaybackControls();
 }
 
 function openUploadSheet() {
@@ -1093,7 +1105,7 @@ async function spotifyStartAuth() {
   const params = new URLSearchParams({
     client_id: clientId, response_type: 'code', redirect_uri: redirectUri,
     code_challenge_method: 'S256', code_challenge: challenge,
-    scope: 'user-read-currently-playing user-read-playback-state',
+    scope: 'user-read-currently-playing user-read-playback-state user-modify-playback-state',
   });
   window.location.href = `https://accounts.spotify.com/authorize?${params}`;
 }
@@ -1180,6 +1192,64 @@ function showSpotifyStatus(type, msg) {
 
 spotifyConnectBtn.addEventListener('click', spotifyStartAuth);
 spotifyDisconnectBtn.addEventListener('click', spotifyDisconnect);
+
+// ── Spotify playback controls ─────────────────────────────────────────────────
+let spotifyIsPlaying = false;
+
+function updatePlaybackControls() {
+  const enabled = localStorage.getItem(LS_SPOTIFY_PLAYBACK) === 'true';
+  const connected = !!localStorage.getItem(LS_SPOTIFY_TOKEN);
+  const isMusic = appMode === 'music';
+  playbackControls.classList.toggle('hidden', !(enabled && connected && isMusic));
+  if (spotifyPlaybackToggle) spotifyPlaybackToggle.checked = enabled;
+}
+
+function setPlaybackIcon(isPlaying) {
+  spotifyIsPlaying = isPlaying;
+  playbackPlayIcon.classList.toggle('hidden', isPlaying);
+  playbackPauseIcon.classList.toggle('hidden', !isPlaying);
+}
+
+async function spotifyPlayerAction(endpoint, method = 'POST') {
+  const token = await getSpotifyToken();
+  if (!token) return;
+  await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+async function spotifyFetchPlaybackState() {
+  const token = await getSpotifyToken();
+  if (!token) return;
+  const resp = await fetch('https://api.spotify.com/v1/me/player', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (resp.status === 204 || !resp.ok) return;
+  const data = await resp.json();
+  setPlaybackIcon(data?.is_playing ?? false);
+}
+
+playbackPrev.addEventListener('click', async () => {
+  await spotifyPlayerAction('previous');
+});
+
+playbackNext.addEventListener('click', async () => {
+  await spotifyPlayerAction('next');
+});
+
+playbackToggleBtn.addEventListener('click', async () => {
+  const token = await getSpotifyToken();
+  if (!token) return;
+  await spotifyPlayerAction(spotifyIsPlaying ? 'pause' : 'play');
+  setPlaybackIcon(!spotifyIsPlaying);
+});
+
+spotifyPlaybackToggle.addEventListener('change', () => {
+  localStorage.setItem(LS_SPOTIFY_PLAYBACK, spotifyPlaybackToggle.checked ? 'true' : 'false');
+  updatePlaybackControls();
+  if (spotifyPlaybackToggle.checked) spotifyFetchPlaybackState();
+});
 
 connectPromptBtn.addEventListener('click', () => {
   mainView.classList.add('hidden');
@@ -1272,6 +1342,7 @@ autoBtn.addEventListener('click', () => {
 buildPrefsList();
 updateServiceCards();
 updateSpotifyUI();
+updatePlaybackControls();
 updateMusicUI();
 
 // Handle Spotify OAuth callback
