@@ -485,6 +485,7 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .playback-play { width: 2.6rem; height: 2.6rem; background: var(--accent); color: #fff; }
 .playback-play:hover { background: var(--accent); filter: brightness(1.1); }
 #playback-play-icon.hidden, #playback-pause-icon.hidden { display: none; }
+#theme-icon-sun.hidden, #theme-icon-moon.hidden { display: none; }
 
 /* ── Photo hero ─────────────────────────────────────────────────────────────── */
 .photo-art-wrap { cursor: pointer; }
