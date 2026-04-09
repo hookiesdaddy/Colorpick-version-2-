@@ -544,6 +544,7 @@ function fallbackCopy(text) {
 
 // ── Show / hide result ────────────────────────────────────────────────────────
 function showResult(data, { fromSync = false, name = null, size = null, skipHistory = false } = {}) {
+  document.body.classList.remove('extracting');
   lastPrimary   = { hex: data.hex, rgb: data.rgb };
   lastSecondary = data.secondary ? { hex: data.secondary.hex, rgb: data.secondary.rgb } : lastPrimary;
   manualOverride = null;
@@ -959,6 +960,7 @@ async function lfmPoll() {
         if (trackKey !== lfmLastTrackKey) {
           lfmLastTrackKey = trackKey;
           updateMusicUI();
+          document.body.classList.add('extracting');
           npSyncLabel.textContent = 'Syncing…';
           await extractFromArt(track.art, `${track.title} — ${track.artist}`);
         } else {
@@ -1002,6 +1004,7 @@ async function lfmPoll() {
       // New track (or first load) — extract every time
       lfmLastTrackKey = trackKey;
       updateMusicUI(); // reveal reload/auto buttons now that a track is present
+      document.body.classList.add('extracting');
       npHero.classList.remove('syncing');
       npSyncLabel.textContent = track.isLive ? 'Syncing…' : 'Extracting…';
       await extractFromArt(track.art, `${track.title} — ${track.artist}`);
@@ -1054,6 +1057,7 @@ async function extractFromArt(artUrl, name = null) {
       npSyncLabel.textContent = 'Synced ✓';
     }
   } catch (e) {
+    document.body.classList.remove('extracting');
     if (syncOn) npSyncLabel.textContent = `Sync error: ${e.message || 'failed'}`;
   }
 }

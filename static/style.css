@@ -68,6 +68,18 @@ body {
 .orb-1 { width: 700px; height: 700px; background: radial-gradient(circle, var(--accent), transparent 65%); top: -250px; left: -200px; transition: opacity 0.3s ease, background 0.6s ease; }
 .orb-2 { width: 600px; height: 600px; background: radial-gradient(circle, var(--secondary-color), transparent 65%); bottom: -200px; right: -150px; transition: opacity 0.3s ease, background 0.6s ease; }
 
+/* ── Extracting state ───────────────────────────────────────────────────────── */
+@keyframes orb-pulse {
+  0%, 100% { opacity: calc(var(--orb-opacity) * 0.35); transform: scale(1); }
+  50%       { opacity: calc(var(--orb-opacity) * 0.7);  transform: scale(1.06); }
+}
+body.extracting .orb { animation: orb-pulse 1.6s ease-in-out infinite; }
+body.extracting .orb-2 { animation-delay: 0.5s; }
+body.extracting .color-gradient-box {
+  background: linear-gradient(135deg, #3a3a3a, #555555) !important;
+  transition: background 0.4s ease;
+}
+
 /* ── Card ───────────────────────────────────────────────────────────────────── */
 .card {
   position: relative; z-index: 1;
