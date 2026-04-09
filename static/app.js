@@ -1291,11 +1291,20 @@ function setPlaybackIcon(isPlaying) {
 
 async function spotifyPlayerAction(endpoint, method = 'POST') {
   const token = await getSpotifyToken();
-  if (!token) return;
-  await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+  if (!token) return false;
+  const resp = await fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
     method,
     headers: { Authorization: `Bearer ${token}` },
   });
+  // 204 = success, 202 = accepted (prev/next)
+  if (resp.status === 404) {
+    console.warn('Spotify: no active device. Open Spotify on a device first.');
+  } else if (resp.status === 403) {
+    console.warn('Spotify: missing playback scope. Reconnect Spotify.');
+  } else if (!resp.ok && resp.status !== 204 && resp.status !== 202) {
+    console.warn('Spotify player action failed:', resp.status);
+  }
+  return resp.ok || resp.status === 204 || resp.status === 202;
 }
 
 async function spotifyFetchPlaybackState() {
@@ -1324,8 +1333,9 @@ playbackToggleBtn.addEventListener('click', async () => {
   if (!token) return;
   const wasPlaying = spotifyIsPlaying;
   setPlaybackIcon(!wasPlaying); // optimistic update
-  await spotifyPlayerAction(wasPlaying ? 'pause' : 'play');
-  setTimeout(spotifyFetchPlaybackState, 600); // confirm real state
+  const ok = await spotifyPlayerAction(wasPlaying ? 'pause' : 'play');
+  if (!ok) setPlaybackIcon(wasPlaying); // revert on failure
+  setTimeout(spotifyFetchPlaybackState, 800); // confirm real state
 });
 
 spotifyPlaybackToggle.addEventListener('change', () => {
