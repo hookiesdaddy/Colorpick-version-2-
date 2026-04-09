@@ -927,8 +927,9 @@ function updateMusicUI() {
   // ── Action row ────────────────────────────────────────────────────────────
   npActionRow.classList.toggle('hidden', isMusic && !hasCredentials);
 
-  // Auto button: music only; hidden until a track plays OR sync is already on
-  autoBtn.style.display = (isPhotos || (!syncOn && !hasTrack)) ? 'none' : '';
+  // Auto button: music only; hidden until credentials exist OR a track has played
+  const hasService = hasCredentials || !!localStorage.getItem(LS_SPOTIFY_TOKEN);
+  autoBtn.style.display = (isPhotos || (!hasService && !hasTrack)) ? 'none' : '';
   autoBtn.classList.toggle('active', syncOn);
   autoBtn.title = syncOn ? 'Auto ON — click to turn off' : 'Auto OFF — click to turn on';
 
