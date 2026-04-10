@@ -985,12 +985,12 @@ if (deviceChecklist) {
 }
 
 // Poll rate slider (snaps to 5 / 10 / 30 seconds)
-const POLL_SNAPS = [5, 10, 30];
+const POLL_SNAPS = [2, 5, 10, 30];
 function pollSnapIndex(secs) {
   const idx = POLL_SNAPS.indexOf(secs);
   return idx >= 0 ? idx : 1; // default to 10s
 }
-const _savedRate = parseInt(localStorage.getItem(LS_POLL_RATE) || '10', 10);
+const _savedRate = parseInt(localStorage.getItem(LS_POLL_RATE) || '5', 10);
 const _savedIdx = pollSnapIndex(_savedRate);
 pollSlider.value = _savedIdx;
 pollRateVal.textContent = `${POLL_SNAPS[_savedIdx]}s`;
@@ -1326,8 +1326,8 @@ function startLfmSync() {
   if (lfmPollTimer) return;
   updateMusicUI();
   lfmPoll();
-  const _storedRate = parseInt(localStorage.getItem(LS_POLL_RATE) || '10', 10);
-  const pollRate = (POLL_SNAPS.includes(_storedRate) ? _storedRate : 10) * 1000;
+  const _storedRate = parseInt(localStorage.getItem(LS_POLL_RATE) || '5', 10);
+  const pollRate = (POLL_SNAPS.includes(_storedRate) ? _storedRate : 5) * 1000;
   lfmPollTimer = setInterval(lfmPoll, pollRate);
 }
 
