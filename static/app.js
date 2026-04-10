@@ -1604,7 +1604,7 @@ playbackToggleBtn.addEventListener('click', async () => {
   if (!token) return;
   const wasPlaying = spotifyIsPlaying;
   setPlaybackIcon(!wasPlaying); // optimistic update
-  const ok = await spotifyPlayerAction(wasPlaying ? 'pause' : 'play');
+  const ok = await spotifyPlayerAction(wasPlaying ? 'pause' : 'play', 'PUT');
   if (!ok) setPlaybackIcon(wasPlaying); // revert on failure
   setTimeout(spotifyFetchPlaybackState, 800); // confirm real state
 });
