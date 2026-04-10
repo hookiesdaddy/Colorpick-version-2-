@@ -1481,8 +1481,7 @@ let spotifyIsPlaying = false;
 function updatePlaybackControls() {
   const enabled = localStorage.getItem(LS_SPOTIFY_PLAYBACK) === 'true';
   const connected = !!localStorage.getItem(LS_SPOTIFY_TOKEN);
-  const isMusic = appMode === 'music';
-  playbackControls.classList.toggle('hidden', !(enabled && connected && isMusic));
+  playbackControls.classList.toggle('hidden', !(enabled && connected));
   if (spotifyPlaybackToggle) spotifyPlaybackToggle.checked = enabled;
 }
 
