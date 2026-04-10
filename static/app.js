@@ -88,7 +88,6 @@ const npArtWrap         = document.querySelector('.np-art-wrap');
 const npTitle           = document.getElementById('np-title');
 const npArtist          = document.getElementById('np-artist');
 const npSyncLabel       = document.getElementById('np-sync-label');
-const npActionRow       = document.getElementById('np-action-row');
 const npSyncBadge       = document.getElementById('np-sync-badge');
 const colorGradientBox  = document.getElementById('color-gradient-box');
 const cacheTog          = document.getElementById('cache-toggle');
@@ -1025,12 +1024,6 @@ function updateMusicUI() {
   npSyncBadge.classList.toggle('hidden', !syncOn);
   npSyncBadge.classList.toggle('paused', paused);
   if (paused && syncOn) npSyncLabel.textContent = '⏸ Paused';
-
-  // Action row: show once credentials exist
-  npActionRow.classList.toggle('hidden', !hasCredentials);
-
-  // Reload: only show when a track has been detected and sync is on (always on now)
-  reloadBtn.style.display = hasTrack ? '' : 'none';
 
   // Keep gradient visible when syncing and has colors
   if (syncOn && lastPrimary) result.classList.remove('hidden');
