@@ -128,6 +128,11 @@ const brightnessSelect  = document.getElementById('brightness-floor-select');
 const satBoostToggle    = document.getElementById('sat-boost-toggle');
 const idleBehaviorSel   = document.getElementById('idle-behavior-select');
 const deviceChecklist   = document.getElementById('device-checklist');
+const govLanToggle      = document.getElementById('govee-lan-toggle');
+const govLanSection     = document.getElementById('govee-lan-section');
+const govDiscoverBtn    = document.getElementById('govee-discover-btn');
+const govLanStatus      = document.getElementById('govee-lan-status');
+const govLanChecklist   = document.getElementById('govee-lan-checklist');
 
 // ── Color families ────────────────────────────────────────────────────────────
 const DEFAULT_FAMILIES = [
@@ -184,8 +189,11 @@ const LS_POLL_RATE          = 'covercolor_poll_rate';
 const LS_BRIGHTNESS_FLOOR   = 'covercolor_brightness_floor'; // 0-100, default 15
 const LS_SAT_BOOST          = 'covercolor_sat_boost';        // bool, default false
 const LS_IDLE_BEHAVIOR      = 'covercolor_idle_behavior';    // 'keep'|'off'|'white'
-const LS_GOVEE_DEVICES      = 'covercolor_govee_devices';    // [{device,model,name}]
-const LS_GOVEE_SELECTED     = 'covercolor_govee_selected';   // [{device,model,name}] subset
+const LS_GOVEE_DEVICES      = 'covercolor_govee_devices';      // [{device,model,name}]
+const LS_GOVEE_SELECTED     = 'covercolor_govee_selected';     // [{device,model,name}] subset
+const LS_GOVEE_USE_LAN      = 'covercolor_govee_use_lan';      // bool — prefer LAN API
+const LS_GOVEE_LAN_DEVICES  = 'covercolor_govee_lan_devices';  // [{ip,device,sku,name}]
+const LS_GOVEE_LAN_SELECTED = 'covercolor_govee_lan_selected'; // [{ip,device,sku,name}] subset
 const HISTORY_MAX       = 30;
 
 const loadApiKey       = () => localStorage.getItem(LS_KEY) || '';
@@ -391,6 +399,51 @@ function persistDeviceSelection() {
   const selected = [...checks].filter(c => c.checked).map(c => JSON.parse(c.dataset.device));
   localStorage.setItem(LS_GOVEE_SELECTED, JSON.stringify(selected));
   lastSentHex = null; // force re-send with new selection
+}
+
+// ── LAN device helpers ────────────────────────────────────────────────────────
+function getLanSelectedDevices() {
+  try {
+    const stored = localStorage.getItem(LS_GOVEE_LAN_SELECTED);
+    if (stored) { const p = JSON.parse(stored); if (Array.isArray(p) && p.length) return p; }
+  } catch {}
+  return null;
+}
+
+function renderLanChecklist(devices) {
+  if (!govLanChecklist || !devices || !devices.length) return;
+  let selected;
+  try { selected = new Set((JSON.parse(localStorage.getItem(LS_GOVEE_LAN_SELECTED) || '[]')).map(d => d.device)); }
+  catch { selected = new Set(devices.map(d => d.device)); }
+  if (!selected.size) selected = new Set(devices.map(d => d.device));
+
+  govLanChecklist.innerHTML = '';
+  devices.forEach(dev => {
+    const label = document.createElement('label');
+    label.className = 'device-check-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selected.has(dev.device);
+    cb.dataset.device = JSON.stringify(dev);
+    cb.addEventListener('change', persistLanSelection);
+    label.append(cb);
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = dev.name || dev.sku || dev.ip;
+    label.append(nameSpan);
+    const ipSpan = document.createElement('span');
+    ipSpan.textContent = ` — ${dev.ip}`;
+    ipSpan.style.opacity = '0.5';
+    label.append(ipSpan);
+    govLanChecklist.appendChild(label);
+  });
+  govLanChecklist.classList.remove('hidden');
+}
+
+function persistLanSelection() {
+  const checks = govLanChecklist.querySelectorAll('input[type="checkbox"]');
+  const selected = [...checks].filter(c => c.checked).map(c => JSON.parse(c.dataset.device));
+  localStorage.setItem(LS_GOVEE_LAN_SELECTED, JSON.stringify(selected));
+  lastSentHex = null;
 }
 
 function updateActiveChip() {
@@ -984,6 +1037,67 @@ if (deviceChecklist) {
   } catch {}
 }
 
+// LAN toggle + discover button
+if (govLanToggle) {
+  const _lanOn = localStorage.getItem(LS_GOVEE_USE_LAN) === 'true';
+  govLanToggle.checked = _lanOn;
+  if (govLanSection) govLanSection.classList.toggle('hidden', !_lanOn);
+
+  govLanToggle.addEventListener('change', () => {
+    localStorage.setItem(LS_GOVEE_USE_LAN, govLanToggle.checked);
+    if (govLanSection) govLanSection.classList.toggle('hidden', !govLanToggle.checked);
+    lastSentHex = null; // force re-send via new path
+  });
+
+  // Render any previously discovered LAN devices
+  try {
+    const _lanStored = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]');
+    if (_lanStored.length) renderLanChecklist(_lanStored);
+  } catch {}
+}
+
+if (govDiscoverBtn) {
+  govDiscoverBtn.addEventListener('click', async () => {
+    govDiscoverBtn.disabled = true;
+    govDiscoverBtn.textContent = 'Discovering…';
+    if (govLanStatus) {
+      govLanStatus.className = 'key-status';
+      govLanStatus.textContent = 'Scanning local network (3 s)…';
+      govLanStatus.classList.remove('hidden');
+    }
+    try {
+      const resp = await fetch('/govee/lan/discover', { method: 'POST' });
+      const data = await resp.json();
+      if (resp.ok && data.device_list?.length) {
+        localStorage.setItem(LS_GOVEE_LAN_DEVICES, JSON.stringify(data.device_list));
+        renderLanChecklist(data.device_list);
+        if (govLanStatus) {
+          govLanStatus.className = 'key-status ok';
+          govLanStatus.textContent = `Found ${data.devices} device${data.devices !== 1 ? 's' : ''}`;
+        }
+      } else if (resp.ok) {
+        if (govLanStatus) {
+          govLanStatus.className = 'key-status error';
+          govLanStatus.textContent = 'No devices found — make sure this server is on the same local network as your lights, and that LAN control is enabled in the Govee app.';
+        }
+      } else {
+        if (govLanStatus) {
+          govLanStatus.className = 'key-status error';
+          govLanStatus.textContent = data.detail || 'Discovery failed';
+        }
+      }
+    } catch (e) {
+      if (govLanStatus) {
+        govLanStatus.className = 'key-status error';
+        govLanStatus.textContent = `Error: ${e.message}`;
+      }
+    } finally {
+      govDiscoverBtn.disabled = false;
+      govDiscoverBtn.textContent = 'Discover Devices';
+    }
+  });
+}
+
 // Poll rate slider (snaps to 5 / 10 / 30 seconds)
 const POLL_SNAPS = [2, 5, 10, 30];
 function pollSnapIndex(secs) {
@@ -1246,6 +1360,25 @@ async function extractFromArt(artUrl, name = null) {
     if (transformed === lastSentHex) return;
     lastSentHex = transformed;
     idleActionSent = false; // reset idle flag — we're actively playing
+
+    const useLan = localStorage.getItem(LS_GOVEE_USE_LAN) === 'true';
+    if (useLan) {
+      let lanDevs = getLanSelectedDevices();
+      if (!lanDevs) {
+        try { lanDevs = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]'); } catch { lanDevs = []; }
+      }
+      if (lanDevs.length) {
+        const fd2 = new FormData();
+        fd2.append('hex', transformed);
+        fd2.append('devices', JSON.stringify(lanDevs));
+        await fetch('/set-light-lan', { method: 'POST', body: fd2, signal: abort.signal });
+        npHero.classList.add('syncing');
+        npSyncLabel.textContent = 'Synced ✓';
+        return;
+      }
+      // Fall through to cloud if no LAN devices are configured
+    }
+
     const fd2 = new FormData();
     fd2.append('hex', transformed);
     const sel = getSelectedDevices();
@@ -1351,14 +1484,34 @@ async function triggerIdleBehavior() {
   const headers = {};
   if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
   const sel = getSelectedDevices();
+  const useLan = localStorage.getItem(LS_GOVEE_USE_LAN) === 'true';
+  let lanDevs = null;
+  if (useLan) {
+    lanDevs = getLanSelectedDevices();
+    if (!lanDevs) {
+      try { lanDevs = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]'); } catch { lanDevs = []; }
+    }
+    if (!lanDevs.length) lanDevs = null; // nothing configured — fall back to cloud
+  }
+
   if (behavior === 'white') {
-    const fd = new FormData(); fd.append('hex', '#ffffff');
-    if (sel) fd.append('selected_devices', JSON.stringify(sel));
-    await fetch('/set-light-hex', { method: 'POST', headers, body: fd });
+    if (lanDevs) {
+      const fd = new FormData(); fd.append('hex', '#ffffff'); fd.append('devices', JSON.stringify(lanDevs));
+      await fetch('/set-light-lan', { method: 'POST', body: fd });
+    } else {
+      const fd = new FormData(); fd.append('hex', '#ffffff');
+      if (sel) fd.append('selected_devices', JSON.stringify(sel));
+      await fetch('/set-light-hex', { method: 'POST', headers, body: fd });
+    }
   } else if (behavior === 'off') {
-    const fd = new FormData(); fd.append('state', 'off');
-    if (sel) fd.append('selected_devices', JSON.stringify(sel));
-    await fetch('/govee/power', { method: 'POST', headers, body: fd });
+    if (lanDevs) {
+      const fd = new FormData(); fd.append('state', 'off'); fd.append('devices', JSON.stringify(lanDevs));
+      await fetch('/govee/lan/power', { method: 'POST', body: fd });
+    } else {
+      const fd = new FormData(); fd.append('state', 'off');
+      if (sel) fd.append('selected_devices', JSON.stringify(sel));
+      await fetch('/govee/power', { method: 'POST', headers, body: fd });
+    }
   }
 }
 

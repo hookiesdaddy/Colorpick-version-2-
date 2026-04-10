@@ -1,5 +1,7 @@
 import asyncio
 import json
+import socket
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -171,6 +173,138 @@ async def govee_power(
     return {"state": state, "lights": results}
 
 
+@app.post("/govee/lan/discover")
+async def govee_lan_discover():
+    """Discover Govee devices on the local network via UDP LAN API (port 4001/4002)."""
+    BROADCAST_ADDR = "239.255.255.250"
+    BROADCAST_PORT = 4001
+    LISTEN_PORT    = 4002
+    SCAN_TIMEOUT   = 3.0
+    SCAN_MSG = json.dumps(
+        {"msg": {"cmd": "scan", "data": {"account_topic": "reserved"}}}
+    ).encode()
+
+    def _discover() -> list:
+        devices: list = []
+        recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        recv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            recv_sock.bind(("", LISTEN_PORT))
+        except OSError as e:
+            raise RuntimeError(f"Cannot bind to port {LISTEN_PORT}: {e}")
+        recv_sock.settimeout(0.5)
+
+        send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        send_sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+        try:
+            send_sock.sendto(SCAN_MSG, (BROADCAST_ADDR, BROADCAST_PORT))
+        finally:
+            send_sock.close()
+
+        seen: set = set()
+        deadline = time.monotonic() + SCAN_TIMEOUT
+        while time.monotonic() < deadline:
+            try:
+                data, addr = recv_sock.recvfrom(4096)
+                msg = json.loads(data.decode())
+                d = msg.get("msg", {}).get("data", {})
+                ip = d.get("ip") or addr[0]
+                device_id = d.get("device", "")
+                if device_id and device_id not in seen:
+                    seen.add(device_id)
+                    sku = d.get("sku", "")
+                    devices.append({
+                        "ip": ip,
+                        "device": device_id,
+                        "sku": sku,
+                        "name": sku or device_id,
+                    })
+            except socket.timeout:
+                pass
+            except Exception:
+                pass
+        recv_sock.close()
+        return devices
+
+    try:
+        devices = await asyncio.get_running_loop().run_in_executor(None, _discover)
+        return {"devices": len(devices), "device_list": devices}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LAN discovery failed: {e}")
+
+
+@app.post("/set-light-lan")
+async def set_light_lan(
+    request: Request,
+    hex: Optional[str] = Form(default=None),
+    devices: Optional[str] = Form(default=None),
+):
+    """Set Govee lights via LAN UDP (port 4003). Each device must include an 'ip' field."""
+    hex_val = (hex or request.query_params.get("hex") or "").strip().lstrip("#")
+    if len(hex_val) != 6:
+        raise HTTPException(status_code=422, detail="Invalid hex color — expected 6 hex digits")
+    try:
+        r, g, b = int(hex_val[0:2], 16), int(hex_val[2:4], 16), int(hex_val[4:6], 16)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid hex color")
+
+    device_list = []
+    if devices:
+        try:
+            parsed = json.loads(devices)
+            if isinstance(parsed, list):
+                device_list = parsed
+        except Exception:
+            pass
+    if not device_list:
+        raise HTTPException(status_code=422, detail="No LAN devices provided")
+
+    results = await _set_all_lights_lan(r, g, b, device_list)
+    return {"hex": f"#{hex_val}", "rgb": {"r": r, "g": g, "b": b}, "lights": results}
+
+
+@app.post("/govee/lan/power")
+async def govee_lan_power(
+    state: str = Form(...),
+    devices: Optional[str] = Form(default=None),
+):
+    """Turn Govee LAN lights on or off."""
+    if state not in ("on", "off"):
+        raise HTTPException(status_code=422, detail="state must be 'on' or 'off'")
+    device_list = []
+    if devices:
+        try:
+            parsed = json.loads(devices)
+            if isinstance(parsed, list):
+                device_list = parsed
+        except Exception:
+            pass
+    if not device_list:
+        raise HTTPException(status_code=422, detail="No LAN devices provided")
+
+    value = 1 if state == "on" else 0
+
+    async def _power_one(device: dict) -> dict:
+        ip   = device.get("ip")
+        name = device.get("name") or device.get("sku") or ip
+        if not ip:
+            return {"name": name, "status": "error", "detail": "No IP address"}
+        msg = json.dumps({"msg": {"cmd": "turn", "data": {"value": value}}}).encode()
+        def _send():
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.settimeout(2.0)
+            try: sock.sendto(msg, (ip, 4003))
+            finally: sock.close()
+        try:
+            await asyncio.get_running_loop().run_in_executor(None, _send)
+            return {"name": name, "status": "ok"}
+        except Exception as e:
+            return {"name": name, "status": "error", "detail": str(e)}
+
+    results = list(await asyncio.gather(*[_power_one(d) for d in device_list]))
+    return {"state": state, "lights": results}
+
+
 @app.post("/govee/test")
 async def test_govee(x_govee_api_key: Optional[str] = Header(default=None)):
     """Validate a Govee API key and return the full device list."""
@@ -282,6 +416,31 @@ async def _set_all_lights(r: int, g: int, b: int, api_key: str = "", devices: li
     async with httpx.AsyncClient(timeout=10.0) as client:
         tasks = [_set_govee_light(client, device, r, g, b, key) for device in devs]
         return list(await asyncio.gather(*tasks))
+
+
+async def _set_govee_lan_light(device: dict, r: int, g: int, b: int) -> dict:
+    ip   = device.get("ip")
+    name = device.get("name") or device.get("sku") or ip
+    if not ip:
+        return {"name": name, "status": "error", "detail": "No IP address"}
+    msg = json.dumps(
+        {"msg": {"cmd": "colorwc", "data": {"color": {"r": r, "g": g, "b": b}, "colorTemInKelvin": 0}}}
+    ).encode()
+    def _send():
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(2.0)
+        try: sock.sendto(msg, (ip, 4003))
+        finally: sock.close()
+    try:
+        await asyncio.get_running_loop().run_in_executor(None, _send)
+        return {"name": name, "status": "ok"}
+    except Exception as e:
+        return {"name": name, "status": "error", "detail": str(e)}
+
+
+async def _set_all_lights_lan(r: int, g: int, b: int, devices: list) -> list:
+    tasks = [_set_govee_lan_light(d, r, g, b) for d in devices]
+    return list(await asyncio.gather(*tasks))
 
 
 async def _set_govee_power(
