@@ -153,6 +153,7 @@ let appMode        = 'music'; // 'music' | 'photos'
 let lastPrimary    = null;
 let lastSecondary  = null;
 let manualOverride = null; // 'primary' | 'secondary' | null
+let lastSentHex    = null; // last hex sent to Govee — skip if unchanged
 
 // ── LocalStorage ──────────────────────────────────────────────────────────────
 const LS_KEY            = 'colorpick_govee_key';
@@ -898,8 +899,11 @@ function updateRanks() { colorPrefsList.querySelectorAll('.pref-item').forEach((
 function persistPrefs() { savePrefs([...colorPrefsList.querySelectorAll('.pref-item')].map(i => i.dataset.name)); }
 
 // ── Last.fm integration ───────────────────────────────────────────────────────
-let lfmPollTimer    = null;
-let lfmLastTrackKey = null; // "Artist - Title" of last synced track
+let lfmPollTimer      = null;
+let lfmLastTrackKey   = null;  // "artist|||title" of last synced track
+let lfmPollInFlight   = false; // prevent overlapping polls
+let extractGeneration = 0;     // incremented on each new extraction; stale ones self-cancel
+let skipDebounceTimer = null;  // debounces rapid prev/next presses
 
 lfmUserInput.value      = localStorage.getItem(LS_LFM_USER) || '';
 lfmKeyInput.value       = localStorage.getItem(LS_LFM_KEY)  || '';
@@ -996,6 +1000,12 @@ function closeUploadSheet() {
 }
 
 async function lfmPoll() {
+  if (lfmPollInFlight) return;
+  lfmPollInFlight = true;
+  try { await _lfmPollInner(); } finally { lfmPollInFlight = false; }
+}
+
+async function _lfmPollInner() {
   const activeService = localStorage.getItem(LS_ACTIVE_SERVICE) || 'lastfm';
   // Use Spotify only if it's the selected service and connected
   if (activeService === 'spotify' && localStorage.getItem(LS_SPOTIFY_TOKEN)) {
@@ -1075,30 +1085,39 @@ async function extractFromArt(artUrl, name = null) {
     if (syncOn) npSyncLabel.textContent = 'No artwork available';
     return;
   }
+
+  // Capture generation — if a newer call starts, this one self-cancels
+  const gen = ++extractGeneration;
+  const abort = new AbortController();
+  const stale = () => gen !== extractGeneration;
+
   const headers = {};
   const apiKey = loadApiKey();
   if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
   const skipNeutrals = loadSkipNeutrals();
   const cacheEnabled = localStorage.getItem(LS_CACHE_ENABLED) !== 'false';
 
+  // ── Helper: send hex to Govee only if it changed ─────────────────────────────
+  async function maybeSendLight(hexColor) {
+    if (!syncOn || hexColor === lastSentHex) return;
+    lastSentHex = hexColor;
+    const fd2 = new FormData(); fd2.append('hex', hexColor);
+    await fetch('/set-light-hex', { method: 'POST', headers, body: fd2, signal: abort.signal });
+    npHero.classList.add('syncing');
+    npSyncLabel.textContent = 'Synced ✓';
+  }
+
   // ── Album cache lookup ───────────────────────────────────────────────────────
   if (cacheEnabled) {
     try {
       const cache = JSON.parse(localStorage.getItem(LS_COLOR_CACHE) || '{}');
       if (cache[artUrl]) {
+        if (stale()) return;
         const cached = cache[artUrl];
         document.body.classList.remove('extracting');
         showResult(cached, { fromSync: true, name });
-        if (syncOn) {
-          const useSecondary = loadPreferSec();
-          const hexColor = useSecondary && cached.secondary ? cached.secondary.hex : cached.hex;
-          await fetch('/set-light-hex', {
-            method: 'POST', headers,
-            body: (() => { const fd2 = new FormData(); fd2.append('hex', hexColor); return fd2; })(),
-          });
-          npHero.classList.add('syncing');
-          npSyncLabel.textContent = 'Synced ✓';
-        }
+        const useSecondary = loadPreferSec();
+        await maybeSendLight(useSecondary && cached.secondary ? cached.secondary.hex : cached.hex);
         return;
       }
     } catch {}
@@ -1106,26 +1125,32 @@ async function extractFromArt(artUrl, name = null) {
 
   try {
     // Fetch art in browser to avoid server-side URL access issues
-    const artResp = await fetch(artUrl);
+    const artResp = await fetch(artUrl, { signal: abort.signal });
     if (!artResp.ok) throw new Error(`Art fetch ${artResp.status}`);
     const artBlob = await artResp.blob();
+    if (stale()) return;
 
-    // ── Downsample to 100×100 for faster extraction (displayed art unaffected) ──
+    // ── Downsample to 64×64 WebP for faster extraction (displayed art unaffected) ──
     let uploadBlob = artBlob;
     try {
       const bmp = await createImageBitmap(artBlob);
-      const canvas = Object.assign(document.createElement('canvas'), { width: 100, height: 100 });
-      canvas.getContext('2d').drawImage(bmp, 0, 0, 100, 100);
+      const canvas = Object.assign(document.createElement('canvas'), { width: 64, height: 64 });
+      canvas.getContext('2d').drawImage(bmp, 0, 0, 64, 64);
       bmp.close();
-      uploadBlob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+      // Prefer WebP (smaller), fall back to JPEG
+      const fmt = canvas.toDataURL('image/webp').startsWith('data:image/webp')
+        ? 'image/webp' : 'image/jpeg';
+      uploadBlob = await new Promise(res => canvas.toBlob(res, fmt, 0.80));
     } catch {}
+    if (stale()) return;
 
     const fd = new FormData();
-    fd.append('file', uploadBlob, 'art.jpg');
+    fd.append('file', uploadBlob, 'art.webp');
     fd.append('skip_neutrals', skipNeutrals ? '1' : '0');
-    const analyzeResp = await fetch('/extract', { method: 'POST', body: fd, headers });
+    const analyzeResp = await fetch('/extract', { method: 'POST', body: fd, headers, signal: abort.signal });
     if (!analyzeResp.ok) throw new Error(`Extract ${analyzeResp.status}`);
     const colorData = await analyzeResp.json();
+    if (stale()) return;
 
     // ── Write to album cache ─────────────────────────────────────────────────────
     if (cacheEnabled) {
@@ -1139,20 +1164,11 @@ async function extractFromArt(artUrl, name = null) {
     }
 
     showResult(colorData, { fromSync: true, name });
+    const useSecondary = loadPreferSec();
+    await maybeSendLight(useSecondary && colorData.secondary ? colorData.secondary.hex : colorData.hex);
 
-    if (syncOn) {
-      // Auto-set lights
-      const useSecondary = loadPreferSec();
-      const hexColor = useSecondary && colorData.secondary ? colorData.secondary.hex : colorData.hex;
-      await fetch('/set-light-hex', {
-        method: 'POST',
-        headers,
-        body: (() => { const fd2 = new FormData(); fd2.append('hex', hexColor); return fd2; })(),
-      });
-      npHero.classList.add('syncing');
-      npSyncLabel.textContent = 'Synced ✓';
-    }
   } catch (e) {
+    if (e.name === 'AbortError') return; // cancelled cleanly — no UI update
     document.body.classList.remove('extracting');
     if (syncOn) npSyncLabel.textContent = `Sync error: ${e.message || 'failed'}`;
   }
@@ -1170,6 +1186,7 @@ function startLfmSync() {
 function stopLfmSync() {
   clearInterval(lfmPollTimer);
   lfmPollTimer = null;
+  lastSentHex = null; // force re-send on next Auto-on
   // Keep lfmLastTrackKey so reload/auto buttons remain visible after toggling off
   updateMusicUI();
 }
@@ -1401,9 +1418,11 @@ async function spotifyFetchPlaybackState() {
 
 async function skipAndRefresh(direction) {
   await spotifyPlayerAction(direction);
-  // Wait for Spotify to update then force a fresh poll + re-extract
+  // Debounce: only fire one poll even if user skips rapidly
   lfmLastTrackKey = null;
-  setTimeout(lfmPoll, 1200);
+  extractGeneration++; // cancel any in-flight extraction immediately
+  clearTimeout(skipDebounceTimer);
+  skipDebounceTimer = setTimeout(lfmPoll, 1200);
 }
 
 playbackPrev.addEventListener('click', () => skipAndRefresh('previous'));

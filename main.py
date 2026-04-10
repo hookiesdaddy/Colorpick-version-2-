@@ -7,6 +7,8 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
 from pydantic import BaseModel
 
 from config import settings
@@ -21,8 +23,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class CachedStaticFiles(StaticFiles):
+    """Serve static files with Cache-Control headers (1-day TTL)."""
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
+
 STATIC_DIR = Path(__file__).parent / "static"
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", CachedStaticFiles(directory=STATIC_DIR), name="static")
 
 GOVEE_CONTROL_URL = "https://developer-api.govee.com/v1/devices/control"
 GOVEE_DEVICES_URL = "https://developer-api.govee.com/v1/devices"

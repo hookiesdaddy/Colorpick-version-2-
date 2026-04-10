@@ -98,11 +98,9 @@ def extract_dominant_color(image_bytes: bytes, skip_neutrals: bool = False) -> d
     """
     try:
         img = Image.open(BytesIO(image_bytes))
-        img.verify()
+        img.load()  # validates + decodes in one pass (replaces verify + re-open)
     except Exception as e:
         raise ValueError(f"Could not read image: {e}")
-
-    img = Image.open(BytesIO(image_bytes))
 
     MAX_DIM = 800
     if max(img.size) > MAX_DIM:
