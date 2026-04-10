@@ -1,15 +1,5 @@
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const tabs              = document.querySelectorAll('.tab');
-const uploadMode        = document.getElementById('upload-mode');
-const urlMode           = document.getElementById('url-mode');
-const dropzone          = document.getElementById('dropzone');
-const fileInput         = document.getElementById('file-input');
-const fileLabelText     = document.getElementById('file-label-text');
-const urlInput          = document.getElementById('url-input');
-const form              = document.getElementById('form');
-const submitBtn         = form.querySelector('.submit-btn');
-const btnText           = submitBtn.querySelector('.btn-text');
 const result            = document.getElementById('result');
 const primaryChip       = document.getElementById('primary-chip');
 const secondaryChip     = document.getElementById('secondary-chip');
@@ -33,29 +23,15 @@ const colorPrefsList    = document.getElementById('color-prefs-list');
 const bgOrb1            = document.querySelector('.orb-1');
 const bgOrb2            = document.querySelector('.orb-2');
 const reloadBtn         = document.getElementById('reload-btn');
-const clearBtn          = document.getElementById('clear-btn');
 const optionsBtn        = document.getElementById('options-btn');
 const optionsPanel      = document.getElementById('options-panel');
 const reloadHint        = document.getElementById('reload-hint');
 const reloadHintBtn     = document.getElementById('reload-hint-btn');
 const lightsProgress    = document.getElementById('lights-progress');
-
-// Settings
 const mainView          = document.getElementById('main-view');
 const settingsView      = document.getElementById('settings-view');
 const settingsBtn       = document.getElementById('settings-btn');
 const settingsBack      = document.getElementById('settings-back');
-
-// Mode tabs
-const modeMusicBtn      = document.getElementById('mode-music-btn');
-const modePhotosBtn     = document.getElementById('mode-photos-btn');
-
-// Photo hero
-const photoHero         = document.getElementById('photo-hero');
-const photoArtWrap      = document.getElementById('photo-art-wrap');
-const photoPreview      = document.getElementById('photo-preview');
-const photoFilename     = document.getElementById('photo-filename');
-const photoFilesize     = document.getElementById('photo-filesize');
 
 // History
 const historyView       = document.getElementById('history-view');
@@ -111,15 +87,8 @@ const npArt             = document.getElementById('np-art');
 const npTitle           = document.getElementById('np-title');
 const npArtist          = document.getElementById('np-artist');
 const npSyncLabel       = document.getElementById('np-sync-label');
-const uploadSheet       = document.getElementById('upload-sheet');
-const sheetCloseBtn     = document.getElementById('sheet-close-btn');
-const autoBtn           = document.getElementById('auto-btn');
 const npActionRow       = document.getElementById('np-action-row');
-const extractArea       = document.getElementById('extract-area');
-const mainUrlInput      = document.getElementById('main-url-input');
-const mainExtractBtn    = document.getElementById('main-extract-btn');
 const npSyncBadge       = document.getElementById('np-sync-badge');
-const mainUrlWrap       = document.getElementById('main-url-wrap');
 const colorGradientBox  = document.getElementById('color-gradient-box');
 const cacheTog          = document.getElementById('cache-toggle');
 const pollSlider        = document.getElementById('poll-rate-slider');
@@ -157,8 +126,6 @@ function setArtSrc(src) {
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let activeMode     = 'upload';
-let appMode        = 'music'; // 'music' | 'photos'
 let lastPrimary    = null;
 let lastSecondary  = null;
 let manualOverride = null; // 'primary' | 'secondary' | null
@@ -191,6 +158,7 @@ const LS_SAT_BOOST          = 'covercolor_sat_boost';        // bool, default fa
 const LS_IDLE_BEHAVIOR      = 'covercolor_idle_behavior';    // 'keep'|'off'|'white'
 const LS_GOVEE_DEVICES      = 'covercolor_govee_devices';      // [{device,model,name}]
 const LS_GOVEE_SELECTED     = 'covercolor_govee_selected';     // [{device,model,name}] subset
+const LS_LIGHTS_PAUSED      = 'covercolor_lights_paused';       // bool — freeze light updates without stopping polling
 const LS_GOVEE_USE_LAN      = 'covercolor_govee_use_lan';      // bool — prefer LAN API
 const LS_GOVEE_LAN_DEVICES  = 'covercolor_govee_lan_devices';  // [{ip,device,sku,name}]
 const LS_GOVEE_LAN_SELECTED = 'covercolor_govee_lan_selected'; // [{ip,device,sku,name}] subset
@@ -461,145 +429,28 @@ function updateActiveChip() {
     sw.style.setProperty('--toggle-active-color', activeHex);
   });
   setLightsBtn.style.setProperty('--active-color', activeHex);
-  autoBtn.style.setProperty('--active-color', activeHex);
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    activeMode = tab.dataset.mode;
-    uploadMode.classList.toggle('hidden', activeMode !== 'upload');
-    urlMode.classList.toggle('hidden', activeMode !== 'url');
-    hideResult(); hideError();
-  });
-});
-
-// ── File / URL ────────────────────────────────────────────────────────────────
-fileInput.addEventListener('change', () => {
-  const file = fileInput.files[0];
-  if (file) { fileLabelText.textContent = file.name; dropzone.classList.add('has-file'); }
-  resetButton();
-  updateClearBtn();
-  // Photos mode: update hero preview
-  if (appMode === 'photos' && file) {
-    photoFilename.textContent = file.name;
-    photoFilesize.textContent = formatSize(file.size) || '';
-    const reader = new FileReader();
-    reader.onload = ev => { photoPreview.src = ev.target.result; };
-    reader.readAsDataURL(file);
-    closeUploadSheet();
-  }
-});
-urlInput.addEventListener('input', () => { resetButton(); updateClearBtn(); });
-
-['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('dragging'); }));
-['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('dragging'); }));
-dropzone.addEventListener('drop', e => {
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) {
-    fileInput.files = e.dataTransfer.files;
-    fileLabelText.textContent = file.name;
-    dropzone.classList.add('has-file');
-    resetButton();
-    updateClearBtn();
-  }
-});
-
-// ── Form submit ───────────────────────────────────────────────────────────────
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (submitBtn.classList.contains('color-revealed')) return;
-  hideResult(); hideError();
-  submitBtn.disabled = true;
-  btnText.textContent = 'Extracting…';
-
-  try {
-    let response;
-    const headers = {};
-    const apiKey = loadApiKey();
-    if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
-
-    const skipNeutrals = loadSkipNeutrals();
-    if (activeMode === 'upload') {
-      if (!fileInput.files[0]) { showError('Please select an image file.'); return; }
-      const fd = new FormData();
-      fd.append('file', fileInput.files[0]);
-      fd.append('skip_neutrals', skipNeutrals ? '1' : '0');
-      response = await fetch('/extract', { method: 'POST', body: fd, headers });
-    } else {
-      const url = urlInput.value.trim();
-      if (!url) { showError('Please enter an image URL.'); return; }
-      response = await fetch('/extract/url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ url, skip_neutrals: skipNeutrals }),
-      });
-    }
-
-    const data = await response.json();
-    if (!response.ok) { showError(data.detail || 'Extraction failed.'); return; }
-    const histName = activeMode === 'upload' && fileInput.files[0]
-      ? fileInput.files[0].name
-      : (urlInput.value.trim() || 'Image URL');
-    const histSize = activeMode === 'upload' && fileInput.files[0] ? fileInput.files[0].size : null;
-    showResult(data, { name: histName, size: histSize });
-  } catch {
-    showError('Network error — is the server running?');
-  } finally {
-    submitBtn.disabled = false;
-    if (!submitBtn.classList.contains('color-revealed')) btnText.textContent = 'Extract Color';
-  }
-});
-
-// ── Reload / Clear ────────────────────────────────────────────────────────────
+// ── Reload ────────────────────────────────────────────────────────────────────
 reloadBtn.addEventListener('click', async () => {
   reloadHint.classList.add('hidden');
   reloadBtn.classList.remove('needs-reload');
   hideError();
-
-  if (appMode === 'music') {
-    // Re-extract from current Last.fm art
-    const user = localStorage.getItem(LS_LFM_USER) || '';
-    const key  = localStorage.getItem(LS_LFM_KEY)  || '';
-    if (!user || !key) return;
-    reloadBtn.disabled = true;
-    try {
-      const track = await lfmGetNowPlaying(user, key);
-      if (track) {
-        npTitle.textContent  = track.title;
-        npArtist.textContent = track.artist;
-        if (track.art) setArtSrc(track.art);
-        await extractFromArt(track.art, `${track.title} — ${track.artist}`);
-      }
-    } catch (e) { /* silent */ }
-    finally { reloadBtn.disabled = false; }
-  } else {
-    // Photos mode: re-run the upload form
-    submitBtn.classList.remove('color-revealed');
-    btnText.textContent = 'Extract Color';
-    hideResult();
-    form.requestSubmit();
-  }
+  const user = localStorage.getItem(LS_LFM_USER) || '';
+  const key  = localStorage.getItem(LS_LFM_KEY)  || '';
+  if (!user || !key) return;
+  reloadBtn.disabled = true;
+  try {
+    const track = await lfmGetNowPlaying(user, key);
+    if (track) {
+      npTitle.textContent  = track.title;
+      npArtist.textContent = track.artist;
+      if (track.art) setArtSrc(track.art);
+      await extractFromArt(track.art, `${track.title} — ${track.artist}`);
+    }
+  } catch (e) { /* silent */ }
+  finally { reloadBtn.disabled = false; }
 });
-
-clearBtn.addEventListener('click', () => {
-  reloadHint.classList.add('hidden');
-  reloadBtn.classList.remove('needs-reload');
-  resetButton();
-  fileInput.value = '';
-  fileLabelText.textContent = 'Drop an image or click to browse';
-  dropzone.classList.remove('has-file');
-  urlInput.value = '';
-  updateClearBtn();
-});
-
-function updateClearBtn() {
-  const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
-  const hasContent = dropzone.classList.contains('has-file') || urlInput.value.trim() || lastPrimary;
-  clearBtn.style.display = (!syncOn && hasContent) ? '' : 'none';
-}
 
 // ── Options panel ─────────────────────────────────────────────────────────────
 optionsBtn.addEventListener('click', () => {
@@ -722,10 +573,8 @@ function showResult(data, { fromSync = false, name = null, size = null, skipHist
   root.style.setProperty('--secondary-color', lastSecondary.hex);
   root.style.setProperty('--accent', lastPrimary.hex);
   root.style.setProperty('--accent-rgb', `${lastPrimary.rgb.r}, ${lastPrimary.rgb.g}, ${lastPrimary.rgb.b}`);
-  dropzone.style.setProperty('--dropzone-color', lastPrimary.hex);
   bgOrb1.style.background = `radial-gradient(circle, ${lastPrimary.hex}, transparent 70%)`;
   bgOrb2.style.background = `radial-gradient(circle, ${lastSecondary.hex}, transparent 70%)`;
-  if (!fromSync) submitBtn.classList.add('color-revealed');
 
   hexPrimaryText.textContent   = lastPrimary.hex.toUpperCase();
   rgbPrimary.textContent       = `${data.rgb.r}, ${data.rgb.g}, ${data.rgb.b}`;
@@ -733,8 +582,7 @@ function showResult(data, { fromSync = false, name = null, size = null, skipHist
   rgbSecondary.textContent     = `${lastSecondary.rgb.r}, ${lastSecondary.rgb.g}, ${lastSecondary.rgb.b}`;
 
   lightsStatus.classList.add('hidden');
-  closeUploadSheet();
-  setTimeout(() => { result.classList.remove('hidden'); updateActiveChip(); updateClearBtn(); }, 350);
+  setTimeout(() => { result.classList.remove('hidden'); updateActiveChip(); }, 350);
 }
 
 function hideResult() {
@@ -743,53 +591,14 @@ function hideResult() {
   manualOverride = null;
   primaryChip.classList.remove('active');
   secondaryChip.classList.remove('active');
-  dropzone.style.removeProperty('--dropzone-color');
   bgOrb1.style.removeProperty('background');
   bgOrb2.style.removeProperty('background');
-}
-
-function resetButton() {
-  submitBtn.classList.remove('color-revealed');
-  btnText.textContent = 'Extract Color';
-  hideResult(); hideError();
 }
 
 function showError(msg) { errorDiv.textContent = msg; errorDiv.classList.remove('hidden'); }
 function hideError()    { errorDiv.classList.add('hidden'); }
 
 const root = document.documentElement;
-
-// ── Mode switching ────────────────────────────────────────────────────────────
-function switchMode(mode) {
-  if (appMode === mode) return;
-  appMode = mode;
-  modeMusicBtn.classList.toggle('active', mode === 'music');
-  modePhotosBtn.classList.toggle('active', mode === 'photos');
-  // Clear colors when switching
-  hideResult();
-  // Reset photo hero when leaving photos mode
-  if (mode === 'music') {
-    photoPreview.src = '';
-    photoFilename.textContent = '—';
-    photoFilesize.textContent = '—';
-    fileInput.value = '';
-    fileLabelText.textContent = 'Drop an image or click to browse';
-    dropzone.classList.remove('has-file');
-    // Re-run color extraction for current track
-    lfmLastTrackKey = null;
-    if (lfmPollTimer) lfmPoll();
-  }
-  updateMusicUI();
-  updateClearBtn();
-}
-
-modeMusicBtn.addEventListener('click', () => switchMode('music'));
-modePhotosBtn.addEventListener('click', () => switchMode('photos'));
-
-// ── Photo hero upload ─────────────────────────────────────────────────────────
-photoArtWrap.addEventListener('click', () => fileInput.click());
-photoArtWrap.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
-
 
 // ── View transitions ──────────────────────────────────────────────────────────
 function showView(incoming, outgoing, direction = 'forward') {
@@ -1198,57 +1007,27 @@ async function lfmGetNowPlaying(user, key) {
 function updateMusicUI() {
   const hasCredentials = !!(localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY));
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
-  const isMusic = appMode === 'music';
-  const isPhotos = appMode === 'photos';
   const hasTrack = lfmLastTrackKey !== null;
-  const hasPhoto = !!(fileInput.files && fileInput.files[0]);
+  const paused = localStorage.getItem(LS_LIGHTS_PAUSED) === 'true';
 
-  // noService: always hidden — npHero handles all music states
-  noService.classList.add('hidden');
+  // npHero: always visible (music-only app now)
+  npHero.classList.remove('hidden');
 
-  // npHero: visible whenever in music mode
-  npHero.classList.toggle('hidden', !isMusic);
-  npSyncBadge.classList.toggle('hidden', !isMusic || !syncOn);
+  // Sync badge: visible when syncing is on; shows paused state
+  npSyncBadge.classList.toggle('hidden', !syncOn);
+  npSyncBadge.classList.toggle('paused', paused);
+  if (paused && syncOn) npSyncLabel.textContent = '⏸ Paused';
 
-  // ── Photo-mode elements ───────────────────────────────────────────────────
-  photoHero.classList.toggle('hidden', !isPhotos);
+  // Action row: show once credentials exist
+  npActionRow.classList.toggle('hidden', !hasCredentials);
 
-  // ── Action row ────────────────────────────────────────────────────────────
-  npActionRow.classList.toggle('hidden', isMusic && !hasCredentials);
+  // Reload: only show when a track has been detected and sync is on (always on now)
+  reloadBtn.style.display = hasTrack ? '' : 'none';
 
-  // Auto button: music only; hidden until credentials exist OR a track has played
-  const hasService = hasCredentials || !!localStorage.getItem(LS_SPOTIFY_TOKEN);
-  autoBtn.style.display = (isPhotos || (!hasService && !hasTrack)) ? 'none' : '';
-  autoBtn.classList.toggle('active', syncOn);
-  autoBtn.title = syncOn ? 'Auto ON — click to turn off' : 'Auto OFF — click to turn on';
-
-  // Reload: music only, not when auto on, only once a track has been detected
-  reloadBtn.style.display = (isPhotos || syncOn || (isMusic && !hasTrack)) ? 'none' : '';
-
-  // Clear: hidden by updateClearBtn when no content; force-hide when auto on
-  if (syncOn) clearBtn.style.display = 'none';
-
-  // URL wrap: photos mode only
-  if (mainUrlWrap) mainUrlWrap.classList.toggle('hidden', isMusic);
-
-  // Extract area: photos only (music uses ↺ reload instead)
-  extractArea.classList.toggle('hidden', isMusic);
-
-  // Keep gradient visible when auto is active and has colors
+  // Keep gradient visible when syncing and has colors
   if (syncOn && lastPrimary) result.classList.remove('hidden');
 
   updatePlaybackControls();
-}
-
-function openUploadSheet() {
-  uploadSheet.classList.remove('hidden');
-  requestAnimationFrame(() => uploadSheet.classList.add('open'));
-}
-
-function closeUploadSheet() {
-  if (!uploadSheet.classList.contains('open')) return;
-  uploadSheet.classList.remove('open');
-  uploadSheet.addEventListener('transitionend', () => uploadSheet.classList.add('hidden'), { once: true });
 }
 
 async function lfmPoll() {
@@ -1356,6 +1135,7 @@ async function extractFromArt(artUrl, name = null) {
   // ── Helper: apply transforms + send hex to Govee only if changed ─────────────
   async function maybeSendLight(hexColor) {
     if (!syncOn) return;
+    if (localStorage.getItem(LS_LIGHTS_PAUSED) === 'true') return;
     const transformed = applyColorTransforms(hexColor);
     if (transformed === lastSentHex) return;
     lastSentHex = transformed;
@@ -1476,6 +1256,7 @@ function stopLfmSync() {
 async function triggerIdleBehavior() {
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
   if (!syncOn || idleActionSent) return;
+  if (localStorage.getItem(LS_LIGHTS_PAUSED) === 'true') return;
   const behavior = localStorage.getItem(LS_IDLE_BEHAVIOR) || 'keep';
   if (behavior === 'keep') return;
   idleActionSent = true;
@@ -1773,87 +1554,19 @@ connectPromptBtn.addEventListener('click', () => {
   settingsView.classList.remove('hidden');
 });
 
-sheetCloseBtn.addEventListener('click', closeUploadSheet);
-
-// Main extract button: URL → extract URL; photos+file → extract file; music → Last.fm art
-mainExtractBtn.addEventListener('click', async () => {
-  const url = mainUrlInput.value.trim();
-
-  if (url) {
-    // URL takes priority in both modes
-    mainExtractBtn.disabled = true;
-    mainExtractBtn.textContent = 'Extracting…';
-    try {
-      const headers = {};
-      const apiKey = loadApiKey();
-      if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
-      const skipNeutrals = loadSkipNeutrals();
-      const resp = await fetch('/extract/url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ url, skip_neutrals: skipNeutrals }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) { showError(data.detail || 'Extraction failed.'); return; }
-      showResult(data, { name: url });
-      mainUrlInput.value = '';
-    } catch { showError('Network error.'); }
-    finally { mainExtractBtn.disabled = false; mainExtractBtn.textContent = 'Extract Colors'; }
-    return;
-  }
-
-  if (appMode === 'photos') {
-    if (!fileInput.files[0]) { photoArtWrap.click(); return; }
-    // Trigger the form which handles file extraction
-    mainExtractBtn.disabled = true;
-    mainExtractBtn.textContent = 'Extracting…';
-    try {
-      const fd = new FormData();
-      fd.append('file', fileInput.files[0]);
-      fd.append('skip_neutrals', loadSkipNeutrals() ? '1' : '0');
-      const headers = {};
-      const apiKey = loadApiKey();
-      if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
-      const resp = await fetch('/extract', { method: 'POST', body: fd, headers });
-      const data = await resp.json();
-      if (!resp.ok) { showError(data.detail || 'Extraction failed.'); return; }
-      showResult(data, { name: fileInput.files[0].name, size: fileInput.files[0].size });
-    } catch { showError('Network error.'); }
-    finally { mainExtractBtn.disabled = false; mainExtractBtn.textContent = 'Extract Colors'; }
-    return;
-  }
-
-  // Music mode: fetch current Last.fm track art
-  const user = localStorage.getItem(LS_LFM_USER) || '';
-  const key  = localStorage.getItem(LS_LFM_KEY)  || '';
-  if (!user || !key) return;
-  mainExtractBtn.disabled = true;
-  mainExtractBtn.textContent = 'Extracting…';
-  try {
-    const track = await lfmGetNowPlaying(user, key);
-    if (track) {
-      npTitle.textContent  = track.title;
-      npArtist.textContent = track.artist;
-      if (track.art) setArtSrc(track.art);
-      await extractFromArt(track.art, `${track.title} — ${track.artist}`);
-    }
-  } catch (e) { /* silent */ }
-  finally { mainExtractBtn.disabled = false; mainExtractBtn.textContent = 'Extract Colors'; }
-});
-
-// Auto: toggle sync on/off
-autoBtn.addEventListener('click', () => {
-  const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
-  const newVal = !syncOn;
-  localStorage.setItem(LS_LFM_SYNC, String(newVal));
-  if (newVal) {
-    lfmLastTrackKey = null; // force re-extraction on re-enable
-    startLfmSync();
-  } else {
-    stopLfmSync();
+// ── Sync badge: click to pause/resume light updates ───────────────────────────
+npSyncBadge.addEventListener('click', () => {
+  const paused = localStorage.getItem(LS_LIGHTS_PAUSED) === 'true';
+  const newPaused = !paused;
+  localStorage.setItem(LS_LIGHTS_PAUSED, String(newPaused));
+  if (!newPaused) {
+    lastSentHex = null; // force immediate re-send on unpause
+    lfmLastTrackKey = null; // trigger re-extraction so colors update right away
+    lfmPoll();
   }
   updateMusicUI();
 });
+npSyncBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') npSyncBadge.click(); });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildPrefsList();
@@ -1915,18 +1628,15 @@ updateMusicUI();
     });
   }
 
-  if (localStorage.getItem(LS_LFM_SYNC) === 'true') {
+  // Always start sync when credentials are present — no Auto button gate
+  if (localStorage.getItem(LS_SPOTIFY_TOKEN) || (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY))) {
+    localStorage.setItem(LS_LFM_SYNC, 'true');
     startLfmSync();
-  } else if (localStorage.getItem(LS_SPOTIFY_TOKEN) || (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY))) {
-    // Connected but auto off — populate now-playing without extracting
+  } else if (false) {
+    // legacy branch — no longer reached; kept as placeholder
     (async () => {
       try {
-        let track = null;
-        if (localStorage.getItem(LS_SPOTIFY_TOKEN)) {
-          track = await spotifyGetNowPlaying();
-        } else {
-          track = await lfmGetNowPlaying(localStorage.getItem(LS_LFM_USER), localStorage.getItem(LS_LFM_KEY));
-        }
+        const track = null;
         if (track) {
           npTitle.textContent  = track.title;
           npArtist.textContent = track.artist;

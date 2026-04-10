@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=70" />
+  <link rel="stylesheet" href="/static/style.css?v=71" />
 </head>
 <body>
   <div class="bg-orbs">
@@ -23,10 +23,6 @@
         <div class="logo">
           <span class="logo-dot" id="logo-dot"></span>
           covercolor
-        </div>
-        <div class="mode-tabs">
-          <button class="mode-tab active" id="mode-music-btn" aria-label="Music mode">Music</button>
-          <button class="mode-tab" id="mode-photos-btn" aria-label="Photos mode">Photos</button>
         </div>
         <div class="header-actions">
           <button class="icon-btn" id="history-btn" title="History" aria-label="History">
@@ -65,7 +61,7 @@
             </svg>
           </div>
         </div>
-        <div class="np-sync-badge" id="np-sync-badge">
+        <div class="np-sync-badge" id="np-sync-badge" role="button" tabindex="0" title="Click to pause/resume light sync" style="cursor:pointer">
           <span class="np-dot"></span>
           <span id="np-sync-label">Waiting…</span>
         </div>
@@ -83,21 +79,6 @@
             <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>
           </button>
         </div>
-      </div>
-
-      <!-- ── Photo hero (photos mode) ── -->
-      <div id="photo-hero" class="np-hero hidden">
-        <div class="np-art-wrap photo-art-wrap" id="photo-art-wrap" role="button" tabindex="0" title="Click to upload photo">
-          <img id="photo-preview" class="np-art" src="" alt="" />
-          <div class="np-art-placeholder photo-placeholder">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-            </svg>
-            <span class="photo-placeholder-text">Tap to upload</span>
-          </div>
-        </div>
-        <div id="photo-filename" class="np-title">—</div>
-        <div id="photo-filesize" class="np-artist">—</div>
       </div>
 
       <!-- ── Color result ── -->
@@ -134,7 +115,7 @@
         <div id="lights-status" class="lights-status hidden"></div>
       </div>
 
-      <!-- ── Action row: Reload × Auto (no extract btn here) ── -->
+      <!-- ── Action row: Reload only ── -->
       <div id="np-action-row" class="np-action-row hidden">
         <button class="ctrl-btn" id="reload-btn" title="Re-run extraction" aria-label="Re-run extraction">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -142,28 +123,6 @@
           </svg>
           Reload
         </button>
-        <button class="icon-btn" id="clear-btn" title="Clear" aria-label="Clear" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <button class="ctrl-btn" id="auto-btn" aria-label="Toggle auto sync">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-          </svg>
-          Auto
-        </button>
-      </div>
-
-      <!-- ── Extract area: URL input + primary Extract button ── -->
-      <div id="extract-area" class="extract-area hidden">
-        <div id="main-url-wrap" class="main-url-wrap">
-          <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-          </svg>
-          <input type="url" id="main-url-input" class="main-url-input" placeholder="Paste an image URL…" />
-        </div>
-        <button id="main-extract-btn" class="main-extract-btn">Extract Colors</button>
       </div>
 
       <!-- ── Controls bar ── -->
@@ -292,52 +251,6 @@
       </div>
 
       <div id="error" class="error hidden"></div>
-    </div>
-
-    <!-- ── Upload sheet (slide-up) ── -->
-    <div id="upload-sheet" class="upload-sheet hidden">
-      <div class="sheet-header">
-        <span class="sheet-title">Manual Upload</span>
-        <button class="icon-btn" id="sheet-close-btn" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="tabs">
-        <button class="tab active" data-mode="upload">Upload</button>
-        <button class="tab" data-mode="url">URL</button>
-      </div>
-
-      <form id="form">
-        <div id="upload-mode" class="mode">
-          <label class="dropzone" for="file-input" id="dropzone">
-            <div class="dropzone-inner">
-              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
-              <span id="file-label-text" class="dropzone-text">Drop an image or click to browse</span>
-              <span class="dropzone-hint">PNG, JPG, GIF, WebP up to 10MB</span>
-            </div>
-            <input type="file" id="file-input" accept="image/*" />
-          </label>
-        </div>
-
-        <div id="url-mode" class="mode hidden">
-          <div class="url-input-wrap">
-            <svg class="url-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-            </svg>
-            <input type="url" id="url-input" placeholder="https://example.com/image.jpg" />
-          </div>
-        </div>
-
-        <button type="submit" class="submit-btn">
-          <span class="btn-text">Extract Color</span>
-        </button>
-      </form>
-
     </div>
 
     <!-- ── History view ── -->
@@ -564,6 +477,6 @@
 
   </div>
 
-  <script src="/static/app.js?v=66"></script>
+  <script src="/static/app.js?v=67"></script>
 </body>
 </html>

@@ -480,6 +480,9 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .np-hero.syncing .np-dot { background: #4ade80; }
 #np-sync-label { font-size: 0.72rem; color: var(--muted); font-weight: 500; }
 .np-hero.syncing #np-sync-label { color: #4ade80; }
+.np-sync-badge:hover { opacity: 0.75; transition: opacity 0.15s; }
+.np-sync-badge.paused .np-dot { background: var(--muted); animation: none; }
+.np-sync-badge.paused #np-sync-label { color: var(--muted); }
 .np-title { font-size: 1.05rem; font-weight: 700; color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .np-artist { font-size: 0.85rem; color: var(--text-secondary); }
 .np-action-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
