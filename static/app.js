@@ -124,6 +124,11 @@ const colorGradientBox  = document.getElementById('color-gradient-box');
 const cacheTog          = document.getElementById('cache-toggle');
 const pollSlider        = document.getElementById('poll-rate-slider');
 const pollRateVal       = document.getElementById('poll-rate-value');
+const brightnessSlider  = document.getElementById('brightness-floor-slider');
+const brightnessVal     = document.getElementById('brightness-floor-value');
+const satBoostToggle    = document.getElementById('sat-boost-toggle');
+const idleBehaviorSel   = document.getElementById('idle-behavior-select');
+const deviceChecklist   = document.getElementById('device-checklist');
 
 // ── Color families ────────────────────────────────────────────────────────────
 const DEFAULT_FAMILIES = [
@@ -154,6 +159,7 @@ let lastPrimary    = null;
 let lastSecondary  = null;
 let manualOverride = null; // 'primary' | 'secondary' | null
 let lastSentHex    = null; // last hex sent to Govee — skip if unchanged
+let idleActionSent = false; // true after idle behavior fired — reset on track detect
 
 // ── LocalStorage ──────────────────────────────────────────────────────────────
 const LS_KEY            = 'colorpick_govee_key';
@@ -176,6 +182,11 @@ const LS_ACTIVE_SERVICE     = 'colorpick_active_service'; // 'lastfm' | 'spotify
 const LS_COLOR_CACHE        = 'covercolor_color_cache';
 const LS_CACHE_ENABLED      = 'covercolor_cache_enabled';
 const LS_POLL_RATE          = 'covercolor_poll_rate';
+const LS_BRIGHTNESS_FLOOR   = 'covercolor_brightness_floor'; // 0-100, default 15
+const LS_SAT_BOOST          = 'covercolor_sat_boost';        // bool, default false
+const LS_IDLE_BEHAVIOR      = 'covercolor_idle_behavior';    // 'keep'|'off'|'white'
+const LS_GOVEE_DEVICES      = 'covercolor_govee_devices';    // [{device,model,name}]
+const LS_GOVEE_SELECTED     = 'covercolor_govee_selected';   // [{device,model,name}] subset
 const HISTORY_MAX       = 30;
 
 const loadApiKey       = () => localStorage.getItem(LS_KEY) || '';
@@ -296,6 +307,89 @@ function isUsingSecondary() {
 function getLightColor() {
   if (!lastPrimary) return null;
   return isUsingSecondary() ? lastSecondary.rgb : lastPrimary.rgb;
+}
+
+// ── Color transforms (brightness floor + saturation boost) ───────────────────
+function applyColorTransforms(hex) {
+  const r = parseInt(hex.slice(1,3), 16) / 255;
+  const g = parseInt(hex.slice(3,5), 16) / 255;
+  const b = parseInt(hex.slice(5,7), 16) / 255;
+
+  // RGB → HSL
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if      (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else                h = ((r - g) / d + 4) / 6;
+  }
+
+  // Apply brightness floor
+  const floor = parseInt(localStorage.getItem(LS_BRIGHTNESS_FLOOR) ?? '15', 10) / 100;
+  l = Math.max(l, floor);
+
+  // Apply saturation boost (+30%, clamped)
+  if (satBoostToggle && satBoostToggle.checked) s = Math.min(1, s + 0.30);
+
+  // HSL → RGB
+  function hue2rgb(p, q, t) {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q-p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q-p) * (2/3-t) * 6;
+    return p;
+  }
+  let r2, g2, b2;
+  if (s === 0) { r2 = g2 = b2 = l; }
+  else {
+    const q = l < 0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+    r2 = hue2rgb(p,q, h+1/3); g2 = hue2rgb(p,q,h); b2 = hue2rgb(p,q, h-1/3);
+  }
+  const toHex = v => Math.round(v*255).toString(16).padStart(2,'0');
+  return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
+}
+
+// ── Device selection helpers ─────────────────────────────────────────────────
+function getSelectedDevices() {
+  try {
+    const stored = localStorage.getItem(LS_GOVEE_SELECTED);
+    if (stored) { const p = JSON.parse(stored); if (Array.isArray(p) && p.length) return p; }
+  } catch {}
+  return null; // null = use backend default (all devices)
+}
+
+function renderDeviceChecklist(devices) {
+  if (!deviceChecklist || !devices || !devices.length) return;
+  let selected;
+  try { selected = new Set((JSON.parse(localStorage.getItem(LS_GOVEE_SELECTED) || '[]')).map(d => d.device)); }
+  catch { selected = new Set(devices.map(d => d.device)); } // default: all selected
+  if (!selected.size) selected = new Set(devices.map(d => d.device));
+
+  deviceChecklist.innerHTML = '';
+  devices.forEach(dev => {
+    const label = document.createElement('label');
+    label.className = 'device-check-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = selected.has(dev.device);
+    cb.dataset.device = JSON.stringify(dev);
+    cb.addEventListener('change', persistDeviceSelection);
+    label.append(cb);
+    const name = document.createElement('span');
+    name.textContent = dev.name;
+    label.append(name);
+    deviceChecklist.appendChild(label);
+  });
+  deviceChecklist.classList.remove('hidden');
+}
+
+function persistDeviceSelection() {
+  const checks = deviceChecklist.querySelectorAll('input[type="checkbox"]');
+  const selected = [...checks].filter(c => c.checked).map(c => JSON.parse(c.dataset.device));
+  localStorage.setItem(LS_GOVEE_SELECTED, JSON.stringify(selected));
+  lastSentHex = null; // force re-send with new selection
 }
 
 function updateActiveChip() {
@@ -787,9 +881,15 @@ testKeyBtn.addEventListener('click', async () => {
   try {
     const resp = await fetch('/govee/test', { method: 'POST', headers: { 'X-Govee-Api-Key': key } });
     const data = await resp.json();
-    resp.ok
-      ? showKeyStatus('ok', `Connected! Found ${data.devices} device${data.devices !== 1 ? 's' : ''}.`)
-      : showKeyStatus('error', data.detail || 'Connection failed.');
+    if (resp.ok) {
+      showKeyStatus('ok', `Connected! Found ${data.devices} device${data.devices !== 1 ? 's' : ''}.`);
+      if (data.device_list && data.device_list.length) {
+        localStorage.setItem(LS_GOVEE_DEVICES, JSON.stringify(data.device_list));
+        renderDeviceChecklist(data.device_list);
+      }
+    } else {
+      showKeyStatus('error', data.detail || 'Connection failed.');
+    }
   } catch { showKeyStatus('error', 'Network error.'); }
   finally { testKeyBtn.disabled = false; testKeyBtn.textContent = 'Test Connection'; }
 });
@@ -845,6 +945,45 @@ cacheTog.checked = localStorage.getItem(LS_CACHE_ENABLED) !== 'false'; // defaul
 cacheTog.addEventListener('change', () => {
   localStorage.setItem(LS_CACHE_ENABLED, String(cacheTog.checked));
 });
+
+// Brightness floor slider (default 15%)
+const _savedFloor = parseInt(localStorage.getItem(LS_BRIGHTNESS_FLOOR) ?? '15', 10);
+if (brightnessSlider) { brightnessSlider.value = _savedFloor; }
+if (brightnessVal) { brightnessVal.textContent = `${_savedFloor}%`; }
+if (brightnessSlider) {
+  brightnessSlider.addEventListener('input', () => {
+    const v = parseInt(brightnessSlider.value, 10);
+    if (brightnessVal) brightnessVal.textContent = `${v}%`;
+    localStorage.setItem(LS_BRIGHTNESS_FLOOR, String(v));
+    lastSentHex = null; // force re-apply transforms on next sync
+  });
+}
+
+// Saturation boost toggle (default off)
+if (satBoostToggle) {
+  satBoostToggle.checked = localStorage.getItem(LS_SAT_BOOST) === 'true';
+  satBoostToggle.addEventListener('change', () => {
+    localStorage.setItem(LS_SAT_BOOST, String(satBoostToggle.checked));
+    lastSentHex = null;
+  });
+}
+
+// Idle behavior select (default 'keep')
+if (idleBehaviorSel) {
+  idleBehaviorSel.value = localStorage.getItem(LS_IDLE_BEHAVIOR) || 'keep';
+  idleBehaviorSel.addEventListener('change', () => {
+    localStorage.setItem(LS_IDLE_BEHAVIOR, idleBehaviorSel.value);
+    idleActionSent = false; // allow immediate re-trigger
+  });
+}
+
+// Device checklist — render from stored devices
+if (deviceChecklist) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LS_GOVEE_DEVICES) || '[]');
+    if (stored.length) renderDeviceChecklist(stored);
+  } catch {}
+}
 
 // Poll rate slider (snaps to 5 / 10 / 30 seconds)
 const POLL_SNAPS = [5, 10, 30];
@@ -1018,6 +1157,7 @@ async function _lfmPollInner() {
         const trackKey = `${track.artist}|||${track.title}`;
         if (trackKey !== lfmLastTrackKey) {
           lfmLastTrackKey = trackKey;
+          idleActionSent = false;
           updateMusicUI();
           document.body.classList.add('extracting');
           npSyncLabel.textContent = 'Syncing…';
@@ -1032,6 +1172,7 @@ async function _lfmPollInner() {
         npTitle.textContent = 'Nothing playing';
         npArtist.textContent = '';
         npSyncLabel.textContent = 'Waiting…';
+        await triggerIdleBehavior();
         return;
       }
     } catch (e) {
@@ -1049,6 +1190,7 @@ async function _lfmPollInner() {
       npTitle.textContent     = 'Nothing playing';
       npArtist.textContent    = 'Is your scrobbler running?';
       npSyncLabel.textContent = 'Waiting…';
+      await triggerIdleBehavior();
       return;
     }
 
@@ -1062,6 +1204,7 @@ async function _lfmPollInner() {
     if (trackKey !== lfmLastTrackKey) {
       // New track (or first load) — extract every time
       lfmLastTrackKey = trackKey;
+      idleActionSent = false;
       updateMusicUI(); // reveal reload/auto buttons now that a track is present
       document.body.classList.add('extracting');
       npHero.classList.remove('syncing');
@@ -1097,11 +1240,17 @@ async function extractFromArt(artUrl, name = null) {
   const skipNeutrals = loadSkipNeutrals();
   const cacheEnabled = localStorage.getItem(LS_CACHE_ENABLED) !== 'false';
 
-  // ── Helper: send hex to Govee only if it changed ─────────────────────────────
+  // ── Helper: apply transforms + send hex to Govee only if changed ─────────────
   async function maybeSendLight(hexColor) {
-    if (!syncOn || hexColor === lastSentHex) return;
-    lastSentHex = hexColor;
-    const fd2 = new FormData(); fd2.append('hex', hexColor);
+    if (!syncOn) return;
+    const transformed = applyColorTransforms(hexColor);
+    if (transformed === lastSentHex) return;
+    lastSentHex = transformed;
+    idleActionSent = false; // reset idle flag — we're actively playing
+    const fd2 = new FormData();
+    fd2.append('hex', transformed);
+    const sel = getSelectedDevices();
+    if (sel) fd2.append('selected_devices', JSON.stringify(sel));
     await fetch('/set-light-hex', { method: 'POST', headers, body: fd2, signal: abort.signal });
     npHero.classList.add('syncing');
     npSyncLabel.textContent = 'Synced ✓';
@@ -1187,8 +1336,31 @@ function stopLfmSync() {
   clearInterval(lfmPollTimer);
   lfmPollTimer = null;
   lastSentHex = null; // force re-send on next Auto-on
+  idleActionSent = false;
   // Keep lfmLastTrackKey so reload/auto buttons remain visible after toggling off
   updateMusicUI();
+}
+
+async function triggerIdleBehavior() {
+  const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
+  if (!syncOn || idleActionSent) return;
+  const behavior = localStorage.getItem(LS_IDLE_BEHAVIOR) || 'keep';
+  if (behavior === 'keep') return;
+  idleActionSent = true;
+  lastSentHex = null; // allow next track to re-send
+  const apiKey = loadApiKey();
+  const headers = {};
+  if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
+  const sel = getSelectedDevices();
+  if (behavior === 'white') {
+    const fd = new FormData(); fd.append('hex', '#ffffff');
+    if (sel) fd.append('selected_devices', JSON.stringify(sel));
+    await fetch('/set-light-hex', { method: 'POST', headers, body: fd });
+  } else if (behavior === 'off') {
+    const fd = new FormData(); fd.append('state', 'off');
+    if (sel) fd.append('selected_devices', JSON.stringify(sel));
+    await fetch('/govee/power', { method: 'POST', headers, body: fd });
+  }
 }
 
 function showLfmStatus(type, msg) {

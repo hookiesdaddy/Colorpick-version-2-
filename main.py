@@ -1,6 +1,7 @@
 import asyncio
+import json
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import httpx
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
@@ -132,9 +133,11 @@ async def set_light(
 async def set_light_hex(
     request: Request,
     hex: Optional[str] = Form(default=None),
+    selected_devices: Optional[str] = Form(default=None),
     x_govee_api_key: Optional[str] = Header(default=None),
 ):
-    """Set lights from a hex string. Accepts hex as a form field or ?hex= query param."""
+    """Set lights from a hex string. Accepts hex as a form field or ?hex= query param.
+    Optional selected_devices: JSON array of {device, model, name} objects to target."""
     hex_val = hex or request.query_params.get("hex") or ""
     hex_val = hex_val.strip().lstrip("#")
     if len(hex_val) != 6:
@@ -144,13 +147,33 @@ async def set_light_hex(
     except ValueError:
         raise HTTPException(status_code=422, detail="Invalid hex color")
     api_key = x_govee_api_key or settings.govee_api_key
-    light_results = await _set_all_lights(r, g, b, api_key)
+    devices = _parse_selected_devices(selected_devices)
+    light_results = await _set_all_lights(r, g, b, api_key, devices=devices)
     return {"hex": f"#{hex_val}", "rgb": {"r": r, "g": g, "b": b}, "lights": light_results}
+
+
+@app.post("/govee/power")
+async def govee_power(
+    state: str = Form(...),
+    selected_devices: Optional[str] = Form(default=None),
+    x_govee_api_key: Optional[str] = Header(default=None),
+):
+    """Turn Govee lights on or off. state must be 'on' or 'off'."""
+    if state not in ("on", "off"):
+        raise HTTPException(status_code=422, detail="state must be 'on' or 'off'")
+    api_key = x_govee_api_key or settings.govee_api_key
+    if not api_key:
+        raise HTTPException(status_code=422, detail="No API key configured")
+    devices = _parse_selected_devices(selected_devices)
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        tasks = [_set_govee_power(client, d, state, api_key) for d in devices]
+        results = list(await asyncio.gather(*tasks))
+    return {"state": state, "lights": results}
 
 
 @app.post("/govee/test")
 async def test_govee(x_govee_api_key: Optional[str] = Header(default=None)):
-    """Validate a Govee API key by listing devices."""
+    """Validate a Govee API key and return the full device list."""
     api_key = x_govee_api_key or settings.govee_api_key
     if not api_key:
         raise HTTPException(status_code=422, detail="No API key provided")
@@ -162,8 +185,12 @@ async def test_govee(x_govee_api_key: Optional[str] = Header(default=None)):
             )
         if resp.status_code == 200:
             data = resp.json()
-            device_count = len(data.get("data", {}).get("devices", []))
-            return {"status": "ok", "devices": device_count}
+            raw = data.get("data", {}).get("devices", [])
+            device_list = [
+                {"device": d["device"], "model": d["model"], "name": d.get("deviceName", d["device"])}
+                for d in raw
+            ]
+            return {"status": "ok", "devices": len(device_list), "device_list": device_list}
         raise HTTPException(status_code=400, detail=f"Govee rejected the key (HTTP {resp.status_code})")
     except HTTPException:
         raise
@@ -235,10 +262,43 @@ async def _set_govee_light(
         return {"name": device["name"], "status": "error", "detail": str(e)}
 
 
-async def _set_all_lights(r: int, g: int, b: int, api_key: str = "") -> list:
+def _parse_selected_devices(selected_devices: Optional[str]) -> list:
+    """Parse JSON device list from form field; falls back to settings.govee_devices."""
+    if selected_devices:
+        try:
+            parsed = json.loads(selected_devices)
+            if isinstance(parsed, list) and parsed:
+                return parsed
+        except Exception:
+            pass
+    return settings.govee_devices
+
+
+async def _set_all_lights(r: int, g: int, b: int, api_key: str = "", devices: list = None) -> list:
     key = api_key or settings.govee_api_key
+    devs = devices if devices is not None else settings.govee_devices
     if not key:
-        return [{"name": d["name"], "status": "skipped", "detail": "No API key configured"} for d in settings.govee_devices]
+        return [{"name": d["name"], "status": "skipped", "detail": "No API key configured"} for d in devs]
     async with httpx.AsyncClient(timeout=10.0) as client:
-        tasks = [_set_govee_light(client, device, r, g, b, key) for device in settings.govee_devices]
+        tasks = [_set_govee_light(client, device, r, g, b, key) for device in devs]
         return list(await asyncio.gather(*tasks))
+
+
+async def _set_govee_power(
+    client: httpx.AsyncClient, device: dict, state: str, api_key: str
+) -> dict:
+    payload = {
+        "device": device["device"],
+        "model": device["model"],
+        "cmd": {"name": "turn", "value": state},
+    }
+    try:
+        resp = await client.put(
+            GOVEE_CONTROL_URL,
+            json=payload,
+            headers={"Govee-API-Key": api_key, "Content-Type": "application/json"},
+        )
+        resp.raise_for_status()
+        return {"name": device["name"], "status": "ok"}
+    except Exception as e:
+        return {"name": device["name"], "status": "error", "detail": str(e)}

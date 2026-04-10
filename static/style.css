@@ -593,6 +593,28 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .poll-rate-control input[type="range"] { width: 80px; accent-color: var(--accent); cursor: pointer; }
 #poll-rate-value { font-size: 0.8rem; color: var(--muted); min-width: 2.2rem; text-align: right; }
 
+/* ── Idle behavior select ──────────────────────────────────────────────────── */
+.idle-behavior-select {
+  font-size: 0.8rem; color: var(--text); background: var(--input-bg);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0.3rem 0.6rem; cursor: pointer; flex-shrink: 0;
+  appearance: auto; outline: none;
+}
+.idle-behavior-select:focus { border-color: var(--accent); }
+
+/* ── Device checklist ──────────────────────────────────────────────────────── */
+.device-checklist { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.25rem; }
+.device-checklist.hidden { display: none; }
+.device-check-row {
+  display: flex; align-items: center; gap: 0.55rem;
+  font-size: 0.82rem; color: var(--text-secondary); cursor: pointer;
+  padding: 0.35rem 0.5rem; border-radius: 6px;
+  transition: background 0.15s;
+}
+.device-check-row:hover { background: var(--subtle); }
+.device-check-row input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+#brightness-floor-value { font-size: 0.8rem; color: var(--muted); min-width: 2.5rem; text-align: right; }
+
 .settings-row-recommended {
   font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
   color: #6366f1; background: rgba(99,102,241,0.12);
