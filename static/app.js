@@ -949,10 +949,12 @@ cacheTog.addEventListener('change', () => {
 
 // Brightness floor select (low / normal / high)
 if (brightnessSelect) {
-  brightnessSelect.value = localStorage.getItem(LS_BRIGHTNESS_FLOOR) || 'normal';
+  const _validFloor = ['low', 'normal', 'high'];
+  const _savedFloor = localStorage.getItem(LS_BRIGHTNESS_FLOOR);
+  brightnessSelect.value = _validFloor.includes(_savedFloor) ? _savedFloor : 'normal';
   brightnessSelect.addEventListener('change', () => {
     localStorage.setItem(LS_BRIGHTNESS_FLOOR, brightnessSelect.value);
-    lastSentHex = null; // force re-apply transforms on next sync
+    lastSentHex = null;
   });
 }
 
