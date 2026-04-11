@@ -36,7 +36,6 @@ const settingsBack      = document.getElementById('settings-back');
 // History
 const historyView       = document.getElementById('history-view');
 const historyBtn        = document.getElementById('history-btn');
-const fullscreenBtn     = document.getElementById('fullscreen-btn');
 const historyBack       = document.getElementById('history-back');
 const historyList       = document.getElementById('history-list');
 const historyClearBtn   = document.getElementById('history-clear-btn');
@@ -757,11 +756,7 @@ historyBtn.addEventListener('click', () => {
   showView(historyView, mainView, 'forward');
   renderHistory();
 });
-if (fullscreenBtn) fullscreenBtn.addEventListener('click', (e) => {
-  e.stopPropagation(); // prevent bubbling to doc resetActivity which would exit immediately
-  lastActivity = Date.now();
-  enterFullscreen();
-});
+
 historyBack.addEventListener('click', () => showView(mainView, historyView, 'back'));
 historyClearBtn.addEventListener('click', () => {
   localStorage.removeItem(LS_HISTORY);
