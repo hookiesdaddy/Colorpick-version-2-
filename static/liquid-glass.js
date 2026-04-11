@@ -45,7 +45,8 @@
     uniform vec3  u_primary;
     uniform vec3  u_secondary;
     uniform float u_bpm;
-    uniform float u_light; /* 1.0 = light mode, 0.0 = dark */
+    uniform float u_light;   /* 1.0 = light mode, 0.0 = dark */
+    uniform float u_ambient; /* 1.0 = immersive mode          */
 
     /* ── Value noise ─────────────────────────────────────────────── */
     float hash(vec3 p) {
@@ -113,13 +114,15 @@
       vec3 col = mix(u_primary, u_secondary, blend);
 
       /* Restrained brightness — preserve hue, avoid blowout */
-      col = clamp(col * 1.08, 0.0, 1.0);
+      /* In ambient mode: pull back brightness to let saturation read */
+      col = clamp(col * mix(1.08, 0.88, u_ambient), 0.0, 1.0);
       float lum = dot(col, vec3(0.299, 0.587, 0.114));
-      col = mix(vec3(lum), col, 1.4); /* push saturation without lifting brightness */
+      /* Ambient: push saturation much harder so colors feel jewel-deep */
+      col = mix(vec3(lum), col, mix(1.4, 2.4, u_ambient));
 
-      /* Very subtle shimmer — just a hint, not a white wash */
+      /* Shimmer: suppress in ambient so whites don't dilute the hue */
       float shimmer = pow(max(sin(t * 6.2832 * 1.5 + 0.9), 0.0), 8.0);
-      col = mix(col, vec3(1.0, 0.97, 0.94), shimmer * 0.10);
+      col = mix(col, vec3(1.0, 0.97, 0.94), shimmer * mix(0.10, 0.02, u_ambient));
 
       return clamp(col, 0.0, 1.0);
     }
@@ -156,18 +159,19 @@
                   + vnoise(p * 2.0 + u_time * 0.03) * 0.40;
         hue = fract(hue * 0.65 + u_time * 0.018);
 
-        vec3 surf = palette(hue) * 1.05;
+        vec3 surf = palette(hue) * mix(1.05, 1.18, u_ambient);
 
         float s1 = pow(max(dot(r, normalize(vec3( 1.6, 2.2, 1.3))), 0.0),  72.0);
         float s2 = pow(max(dot(r, normalize(vec3(-1.3,-0.9, 1.0))), 0.0),  32.0);
         float s3 = pow(max(dot(r, normalize(vec3( 0.4,-1.9, 0.9))), 0.0),  24.0);
         float rim = pow(1.0 - max(dot(n, v), 0.0), 5.0);
 
+        float ambSpec = mix(1.0, 0.25, u_ambient); /* crush speculars in ambient */
         col  = surf * mix(0.60, 0.92, fr);
-        col += vec3(1.00, 0.98, 0.95)           * s1 * 0.40;
-        col += mix(u_secondary, vec3(1.0), 0.4) * s2 * 0.28;
-        col += mix(u_primary,   vec3(1.0), 0.3) * s3 * 0.22;
-        col += u_secondary * 1.0                * rim * 0.4;
+        col += vec3(1.00, 0.98, 0.95)           * s1 * 0.40 * ambSpec;
+        col += mix(u_secondary, vec3(1.0), 0.4) * s2 * 0.28 * ambSpec;
+        col += mix(u_primary,   vec3(1.0), 0.3) * s3 * 0.22 * ambSpec;
+        col += u_secondary * 1.0                * rim * mix(0.4, 0.65, u_ambient);
 
         float edgeFade = 1.0 - smoothstep(0.0, 0.18, fr);
         col = mix(col, bg * 2.5, (1.0 - edgeFade) * fr * 0.3);
@@ -215,6 +219,7 @@
   const uSecondary= gl.getUniformLocation(prog, 'u_secondary');
   const uBpm      = gl.getUniformLocation(prog, 'u_bpm');
   const uLight    = gl.getUniformLocation(prog, 'u_light');
+  const uAmbient  = gl.getUniformLocation(prog, 'u_ambient');
 
   gl.enableVertexAttribArray(aPos);
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
@@ -275,6 +280,7 @@
     gl.uniform3fv(uSecondary,curSecondary);
     gl.uniform1f(uBpm,       window._trackBpm || 0);
     gl.uniform1f(uLight,     document.body.classList.contains('theme-light') ? 1.0 : 0.0);
+    gl.uniform1f(uAmbient,   document.body.classList.contains('ambient-mode') ? 1.0 : 0.0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     rafId = requestAnimationFrame(draw);
   }
