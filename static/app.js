@@ -757,8 +757,9 @@ historyBtn.addEventListener('click', () => {
   showView(historyView, mainView, 'forward');
   renderHistory();
 });
-if (fullscreenBtn) fullscreenBtn.addEventListener('click', () => {
-  lastActivity = 0; // make idle check trigger immediately
+if (fullscreenBtn) fullscreenBtn.addEventListener('click', (e) => {
+  e.stopPropagation(); // prevent bubbling to doc resetActivity which would exit immediately
+  lastActivity = Date.now();
   enterFullscreen();
 });
 historyBack.addEventListener('click', () => showView(mainView, historyView, 'back'));

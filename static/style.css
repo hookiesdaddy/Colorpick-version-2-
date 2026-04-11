@@ -812,6 +812,8 @@ body.fullscreen-mode .card::after { display: none; }
 body.fullscreen-mode header,
 body.fullscreen-mode #result,
 body.fullscreen-mode #options-panel,
+body.fullscreen-mode #options-btn,
+body.fullscreen-mode .np-sync-badge,
 body.fullscreen-mode #no-service,
 body.fullscreen-mode #error,
 body.fullscreen-mode #reload-hint { display: none !important; }
@@ -842,11 +844,5 @@ body.fullscreen-mode .np-title {
 }
 body.fullscreen-mode .np-artist {
   font-size: 1.1rem;
-}
-body.fullscreen-mode .np-sync-badge {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
 }
 body.fullscreen-mode .playback-controls { margin-top: 0.5rem; }
