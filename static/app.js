@@ -1736,9 +1736,12 @@ function exitFullscreen() {
   }, FS_DUR + 40);
 }
 
-function resetActivity() {
+function resetActivity(e) {
   lastActivity = Date.now();
-  if (isFullscreen) exitFullscreen();
+  if (!isFullscreen) return;
+  // Clicks/touches inside the card keep fullscreen alive (controls, etc.)
+  if (e && e.target && e.target.closest && e.target.closest('.card')) return;
+  exitFullscreen();
 }
 
 function checkFullscreenTimer() {
