@@ -196,6 +196,7 @@ const LS_LIGHTS_PAUSED      = 'covercolor_lights_paused';       // bool — free
 const LS_GOVEE_USE_LAN      = 'covercolor_govee_use_lan';      // bool — prefer LAN API
 const LS_GOVEE_LAN_DEVICES  = 'covercolor_govee_lan_devices';  // [{ip,device,sku,name}]
 const LS_GOVEE_LAN_SELECTED = 'covercolor_govee_lan_selected'; // [{ip,device,sku,name}] subset
+const LS_DEVICE_ROLES      = 'covercolor_device_roles';       // {deviceId: 'primary'|'secondary'|'off'}
 const HISTORY_MAX       = 30;
 
 const loadApiKey       = () => localStorage.getItem(LS_KEY) || '';
@@ -362,90 +363,94 @@ function applyColorTransforms(hex) {
   return `#${toHex(r2)}${toHex(g2)}${toHex(b2)}`;
 }
 
-// ── Device selection helpers ─────────────────────────────────────────────────
-function getSelectedDevices() {
-  try {
-    const stored = localStorage.getItem(LS_GOVEE_SELECTED);
-    if (stored) { const p = JSON.parse(stored); if (Array.isArray(p) && p.length) return p; }
-  } catch {}
-  return null; // null = use backend default (all devices)
+// ── Scene / device role helpers ───────────────────────────────────────────────
+function loadDeviceRoles() {
+  try { return JSON.parse(localStorage.getItem(LS_DEVICE_ROLES) || '{}'); } catch { return {}; }
+}
+function getDeviceRole(deviceId) {
+  return loadDeviceRoles()[deviceId] ?? 'primary'; // default: primary
+}
+function saveDeviceRole(deviceId, role) {
+  const roles = loadDeviceRoles();
+  roles[deviceId] = role;
+  localStorage.setItem(LS_DEVICE_ROLES, JSON.stringify(roles));
+}
+function getDevicesByRole(role) {
+  let devs; try { devs = JSON.parse(localStorage.getItem(LS_GOVEE_DEVICES) || '[]'); } catch { devs = []; }
+  return devs.filter(d => getDeviceRole(d.device) === role);
+}
+function getActiveDevices() {
+  let devs; try { devs = JSON.parse(localStorage.getItem(LS_GOVEE_DEVICES) || '[]'); } catch { devs = []; }
+  return devs.filter(d => getDeviceRole(d.device) !== 'off');
+}
+function getLanDevicesByRole(role) {
+  let devs; try { devs = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]'); } catch { devs = []; }
+  return devs.filter(d => getDeviceRole(d.device) === role);
+}
+function getActiveLanDevices() {
+  let devs; try { devs = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]'); } catch { devs = []; }
+  return devs.filter(d => getDeviceRole(d.device) !== 'off');
+}
+
+function _buildRolePills(deviceId, pillsContainer) {
+  ['primary', 'secondary', 'off'].forEach(role => {
+    const btn = document.createElement('button');
+    btn.className = 'device-role-pill';
+    btn.dataset.role = role;
+    btn.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+    if (getDeviceRole(deviceId) === role) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      saveDeviceRole(deviceId, role);
+      pillsContainer.querySelectorAll('.device-role-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      lastSentHex = null; // force re-send with new roles
+    });
+    pillsContainer.appendChild(btn);
+  });
 }
 
 function renderDeviceChecklist(devices) {
   if (!deviceChecklist || !devices || !devices.length) return;
-  let selected;
-  try { selected = new Set((JSON.parse(localStorage.getItem(LS_GOVEE_SELECTED) || '[]')).map(d => d.device)); }
-  catch { selected = new Set(devices.map(d => d.device)); } // default: all selected
-  if (!selected.size) selected = new Set(devices.map(d => d.device));
-
   deviceChecklist.innerHTML = '';
   devices.forEach(dev => {
-    const label = document.createElement('label');
-    label.className = 'device-check-row';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = selected.has(dev.device);
-    cb.dataset.device = JSON.stringify(dev);
-    cb.addEventListener('change', persistDeviceSelection);
-    label.append(cb);
-    const name = document.createElement('span');
-    name.textContent = dev.name;
-    label.append(name);
-    deviceChecklist.appendChild(label);
+    const row = document.createElement('div');
+    row.className = 'device-role-row';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'device-role-name';
+    nameSpan.textContent = dev.name;
+    row.appendChild(nameSpan);
+    const pills = document.createElement('div');
+    pills.className = 'device-role-pills';
+    _buildRolePills(dev.device, pills);
+    row.appendChild(pills);
+    deviceChecklist.appendChild(row);
   });
   deviceChecklist.classList.remove('hidden');
 }
 
-function persistDeviceSelection() {
-  const checks = deviceChecklist.querySelectorAll('input[type="checkbox"]');
-  const selected = [...checks].filter(c => c.checked).map(c => JSON.parse(c.dataset.device));
-  localStorage.setItem(LS_GOVEE_SELECTED, JSON.stringify(selected));
-  lastSentHex = null; // force re-send with new selection
-}
-
 // ── LAN device helpers ────────────────────────────────────────────────────────
-function getLanSelectedDevices() {
-  try {
-    const stored = localStorage.getItem(LS_GOVEE_LAN_SELECTED);
-    if (stored) { const p = JSON.parse(stored); if (Array.isArray(p) && p.length) return p; }
-  } catch {}
-  return null;
-}
-
 function renderLanChecklist(devices) {
   if (!govLanChecklist || !devices || !devices.length) return;
-  let selected;
-  try { selected = new Set((JSON.parse(localStorage.getItem(LS_GOVEE_LAN_SELECTED) || '[]')).map(d => d.device)); }
-  catch { selected = new Set(devices.map(d => d.device)); }
-  if (!selected.size) selected = new Set(devices.map(d => d.device));
-
   govLanChecklist.innerHTML = '';
   devices.forEach(dev => {
-    const label = document.createElement('label');
-    label.className = 'device-check-row';
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.checked = selected.has(dev.device);
-    cb.dataset.device = JSON.stringify(dev);
-    cb.addEventListener('change', persistLanSelection);
-    label.append(cb);
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = dev.name || dev.sku || dev.ip;
-    label.append(nameSpan);
-    const ipSpan = document.createElement('span');
-    ipSpan.textContent = ` — ${dev.ip}`;
-    ipSpan.style.opacity = '0.5';
-    label.append(ipSpan);
-    govLanChecklist.appendChild(label);
+    const row = document.createElement('div');
+    row.className = 'device-role-row';
+    const nameWrap = document.createElement('span');
+    nameWrap.className = 'device-role-name';
+    const nameEl = document.createElement('span');
+    nameEl.textContent = dev.name || dev.sku || dev.ip;
+    const ipEl = document.createElement('span');
+    ipEl.textContent = ` — ${dev.ip}`;
+    ipEl.style.opacity = '0.5';
+    nameWrap.append(nameEl, ipEl);
+    row.appendChild(nameWrap);
+    const pills = document.createElement('div');
+    pills.className = 'device-role-pills';
+    _buildRolePills(dev.device, pills);
+    row.appendChild(pills);
+    govLanChecklist.appendChild(row);
   });
   govLanChecklist.classList.remove('hidden');
-}
-
-function persistLanSelection() {
-  const checks = govLanChecklist.querySelectorAll('input[type="checkbox"]');
-  const selected = [...checks].filter(c => c.checked).map(c => JSON.parse(c.dataset.device));
-  localStorage.setItem(LS_GOVEE_LAN_SELECTED, JSON.stringify(selected));
-  lastSentHex = null;
 }
 
 function updateActiveChip() {
@@ -1157,27 +1162,33 @@ async function extractFromArt(artUrl, name = null) {
   const skipNeutrals = loadSkipNeutrals();
   const cacheEnabled = localStorage.getItem(LS_CACHE_ENABLED) !== 'false';
 
-  // ── Helper: apply transforms + send hex to Govee only if changed ─────────────
-  async function maybeSendLight(hexColor) {
+  // ── Helper: send primaryHex → primary devices, secondaryHex → secondary devices ─
+  async function maybeSendLight(primaryHex, secondaryHex) {
     if (!syncOn) return;
     if (localStorage.getItem(LS_LIGHTS_PAUSED) === 'true') return;
-    const transformed = applyColorTransforms(hexColor);
-    if (transformed === lastSentHex) return;
-    lastSentHex = transformed;
+    const tPrimary   = applyColorTransforms(primaryHex);
+    const tSecondary = applyColorTransforms(secondaryHex ?? primaryHex);
+    const sentKey = `${tPrimary}|${tSecondary}`;
+    if (sentKey === lastSentHex) return;
+    lastSentHex = sentKey;
     idleActionSent = false; // reset idle flag — we're actively playing
 
     const useLan = localStorage.getItem(LS_GOVEE_USE_LAN) === 'true';
     if (useLan) {
-      let lanDevs = getLanSelectedDevices();
-      if (!lanDevs) {
-        try { lanDevs = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]'); } catch { lanDevs = []; }
-      }
-      if (lanDevs.length) {
-        const fd2 = new FormData();
-        fd2.append('hex', transformed);
-        fd2.append('devices', JSON.stringify(lanDevs));
+      const lanPrimary   = getLanDevicesByRole('primary');
+      const lanSecondary = getLanDevicesByRole('secondary');
+      if (lanPrimary.length || lanSecondary.length) {
+        const sends = [];
+        if (lanPrimary.length) {
+          const fd = new FormData(); fd.append('hex', tPrimary); fd.append('devices', JSON.stringify(lanPrimary));
+          sends.push(fetch('/set-light-lan', { method: 'POST', body: fd, signal: abort.signal }));
+        }
+        if (lanSecondary.length) {
+          const fd = new FormData(); fd.append('hex', tSecondary); fd.append('devices', JSON.stringify(lanSecondary));
+          sends.push(fetch('/set-light-lan', { method: 'POST', body: fd, signal: abort.signal }));
+        }
         try {
-          await fetch('/set-light-lan', { method: 'POST', body: fd2, signal: abort.signal });
+          await Promise.all(sends);
           _goveeOk = true;
           setSyncStatus('green', 'Synced ✓');
         } catch (e) {
@@ -1187,15 +1198,23 @@ async function extractFromArt(artUrl, name = null) {
         }
         return;
       }
-      // Fall through to cloud if no LAN devices are configured
+      // Fall through to cloud if no LAN devices configured
     }
 
-    const fd2 = new FormData();
-    fd2.append('hex', transformed);
-    const sel = getSelectedDevices();
-    if (sel) fd2.append('selected_devices', JSON.stringify(sel));
+    const cloudPrimary   = getDevicesByRole('primary');
+    const cloudSecondary = getDevicesByRole('secondary');
+    if (!cloudPrimary.length && !cloudSecondary.length) return;
+    const sends = [];
+    if (cloudPrimary.length) {
+      const fd = new FormData(); fd.append('hex', tPrimary); fd.append('selected_devices', JSON.stringify(cloudPrimary));
+      sends.push(fetch('/set-light-hex', { method: 'POST', headers, body: fd, signal: abort.signal }));
+    }
+    if (cloudSecondary.length) {
+      const fd = new FormData(); fd.append('hex', tSecondary); fd.append('selected_devices', JSON.stringify(cloudSecondary));
+      sends.push(fetch('/set-light-hex', { method: 'POST', headers, body: fd, signal: abort.signal }));
+    }
     try {
-      await fetch('/set-light-hex', { method: 'POST', headers, body: fd2, signal: abort.signal });
+      await Promise.all(sends);
       _goveeOk = true;
       setSyncStatus('green', 'Synced ✓');
     } catch (e) {
@@ -1212,8 +1231,7 @@ async function extractFromArt(artUrl, name = null) {
       if (stale()) return;
       document.body.classList.remove('extracting');
       showResult(cached, { fromSync: true, name });
-      const useSecondary = loadPreferSec();
-      await maybeSendLight(useSecondary && cached.secondary ? cached.secondary.hex : cached.hex);
+      await maybeSendLight(cached.hex, cached.secondary?.hex ?? cached.hex);
       return;
     }
   }
@@ -1251,8 +1269,7 @@ async function extractFromArt(artUrl, name = null) {
     if (cacheEnabled) cacheSet(artUrl, colorData);
 
     showResult(colorData, { fromSync: true, name });
-    const useSecondary = loadPreferSec();
-    await maybeSendLight(useSecondary && colorData.secondary ? colorData.secondary.hex : colorData.hex);
+    await maybeSendLight(colorData.hex, colorData.secondary?.hex ?? colorData.hex);
 
   } catch (e) {
     if (e.name === 'AbortError') return; // cancelled cleanly — no UI update
@@ -1290,33 +1307,27 @@ async function triggerIdleBehavior() {
   const apiKey = loadApiKey();
   const headers = {};
   if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
-  const sel = getSelectedDevices();
   const useLan = localStorage.getItem(LS_GOVEE_USE_LAN) === 'true';
-  let lanDevs = null;
-  if (useLan) {
-    lanDevs = getLanSelectedDevices();
-    if (!lanDevs) {
-      try { lanDevs = JSON.parse(localStorage.getItem(LS_GOVEE_LAN_DEVICES) || '[]'); } catch { lanDevs = []; }
-    }
-    if (!lanDevs.length) lanDevs = null; // nothing configured — fall back to cloud
-  }
+  const lanDevs = useLan ? getActiveLanDevices() : [];
 
   if (behavior === 'white') {
-    if (lanDevs) {
+    if (lanDevs.length) {
       const fd = new FormData(); fd.append('hex', '#ffffff'); fd.append('devices', JSON.stringify(lanDevs));
       await fetch('/set-light-lan', { method: 'POST', body: fd });
     } else {
+      const active = getActiveDevices();
       const fd = new FormData(); fd.append('hex', '#ffffff');
-      if (sel) fd.append('selected_devices', JSON.stringify(sel));
+      if (active.length) fd.append('selected_devices', JSON.stringify(active));
       await fetch('/set-light-hex', { method: 'POST', headers, body: fd });
     }
   } else if (behavior === 'off') {
-    if (lanDevs) {
+    if (lanDevs.length) {
       const fd = new FormData(); fd.append('state', 'off'); fd.append('devices', JSON.stringify(lanDevs));
       await fetch('/govee/lan/power', { method: 'POST', body: fd });
     } else {
+      const active = getActiveDevices();
       const fd = new FormData(); fd.append('state', 'off');
-      if (sel) fd.append('selected_devices', JSON.stringify(sel));
+      if (active.length) fd.append('selected_devices', JSON.stringify(active));
       await fetch('/govee/power', { method: 'POST', headers, body: fd });
     }
   }

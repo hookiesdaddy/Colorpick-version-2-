@@ -646,17 +646,28 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 }
 .idle-behavior-select:focus { border-color: var(--accent); }
 
-/* ── Device checklist ──────────────────────────────────────────────────────── */
-.device-checklist { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.25rem; }
+/* ── Device role pills (Scene) ─────────────────────────────────────────────── */
+.device-checklist { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
 .device-checklist.hidden { display: none; }
-.device-check-row {
-  display: flex; align-items: center; gap: 0.55rem;
-  font-size: 0.82rem; color: var(--text-secondary); cursor: pointer;
-  padding: 0.35rem 0.5rem; border-radius: 6px;
-  transition: background 0.15s;
+.device-role-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.3rem 0.1rem;
 }
-.device-check-row:hover { background: var(--subtle); }
-.device-check-row input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.device-role-name {
+  font-size: 0.82rem; color: var(--text-secondary); flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.device-role-pills { display: flex; gap: 0.3rem; flex-shrink: 0; }
+.device-role-pill {
+  font-size: 0.72rem; font-weight: 500; padding: 0.2rem 0.55rem;
+  border-radius: 20px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.device-role-pill:hover { background: var(--subtle); color: var(--text-secondary); }
+.device-role-pill.active[data-role="primary"]   { background: rgba(99,179,237,0.18); color: #63b3ed; border-color: rgba(99,179,237,0.4); }
+.device-role-pill.active[data-role="secondary"] { background: rgba(167,139,250,0.18); color: #a78bfa; border-color: rgba(167,139,250,0.4); }
+.device-role-pill.active[data-role="off"]       { background: var(--subtle); color: var(--text-secondary); border-color: var(--border); }
 
 .settings-row-recommended {
   font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
