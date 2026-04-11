@@ -1603,6 +1603,17 @@ npSyncBadge.addEventListener('click', () => {
 npSyncBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') npSyncBadge.click(); });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// Force GPU recomposite for blurred orbs after first paint — fixes the boxy
+// artifact that otherwise only clears when the user scrolls.
+requestAnimationFrame(() => requestAnimationFrame(() => {
+  bgOrb1.style.transform = 'translateZ(0) scale(1.0001)';
+  bgOrb2.style.transform = 'translateZ(0) scale(1.0001)';
+  requestAnimationFrame(() => {
+    bgOrb1.style.transform = '';
+    bgOrb2.style.transform = '';
+  });
+}));
+
 // Populate version from server so config.py is the single source of truth
 fetch('/health').then(r => r.json()).then(d => {
   const el = document.getElementById('app-version');

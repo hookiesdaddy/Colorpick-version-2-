@@ -98,7 +98,7 @@ body {
 /* overflow:hidden clips blur rasterisation artifacts at viewport boundary.     */
 /* border-radius removed from .orb — it creates a compositing-layer box when   */
 /* combined with filter:blur; the radial-gradient already handles the shape.    */
-.bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; transform: translateZ(0); }
 .orb { position: absolute; filter: blur(160px); opacity: var(--orb-opacity); transition: opacity 0.3s ease; will-change: transform, opacity; transform: translateZ(0); }
 .orb-1 { width: max(900px, 75vw); height: max(900px, 75vh); background: radial-gradient(circle, var(--accent), transparent 55%); top: -45vh; left: -35vw; transition: opacity 0.3s ease, background 0.6s ease; }
 .orb-2 { width: max(800px, 70vw); height: max(800px, 70vh); background: radial-gradient(circle, var(--secondary-color), transparent 55%); bottom: -40vh; right: -30vw; transition: opacity 0.3s ease, background 0.6s ease; }
