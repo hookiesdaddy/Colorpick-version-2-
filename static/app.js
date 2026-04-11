@@ -1792,7 +1792,7 @@ function resetActivity(e) {
 function checkFullscreenTimer() {
   const idx   = parseInt(localStorage.getItem(LS_FULLSCREEN_DELAY) || '0', 10);
   const delay = FULLSCREEN_SNAPS[idx] || 0;
-  if (!delay || isFullscreen) return;
+  if (!delay || isFullscreen || isAmbient) return;
   if (Date.now() - lastActivity >= delay * 1000) enterFullscreen();
 }
 
@@ -1819,10 +1819,97 @@ if (fullscreenSlider) {
 document.addEventListener('mousemove', () => { lastActivity = Date.now(); }, { passive: true });
 
 // Escape always exits regardless of above
-document.addEventListener('keydown', e => { if (e.key === 'Escape') exitFullscreen(); }, { passive: true });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { exitFullscreen(); exitAmbient(); } }, { passive: true });
 
 // Check every 15 s
 setInterval(checkFullscreenTimer, 15000);
+
+// ── Ambient mode ──────────────────────────────────────────────────────────────
+let isAmbient = false;
+
+const ambientBtn      = document.getElementById('ambient-btn');
+const ambientOverlay  = document.getElementById('ambient-overlay');
+const ambientTitle    = document.getElementById('ambient-title');
+const ambientArtist   = document.getElementById('ambient-artist');
+const ambientTrackInfo= document.getElementById('ambient-track-info');
+const ambientPrev     = document.getElementById('ambient-prev');
+const ambientNext     = document.getElementById('ambient-next');
+
+function syncAmbientTrackInfo() {
+  if (ambientTitle)  ambientTitle.textContent  = npTitle.textContent  || 'Nothing playing';
+  if (ambientArtist) ambientArtist.textContent = npArtist.textContent || '—';
+}
+
+function enterAmbient() {
+  if (isAmbient) return;
+  if (isFullscreen) exitFullscreen();
+  isAmbient = true;
+  syncAmbientTrackInfo();
+  const card = document.querySelector('.card');
+  card.style.transition = 'opacity 380ms ease, transform 380ms ease';
+  card.style.opacity    = '0';
+  card.style.transform  = 'scale(0.96)';
+  setTimeout(() => {
+    document.body.classList.add('ambient-mode');
+    card.style.cssText = '';
+    if (ambientOverlay) ambientOverlay.classList.add('visible');
+  }, 400);
+}
+
+function exitAmbient() {
+  if (!isAmbient) return;
+  isAmbient = false;
+  if (ambientOverlay) ambientOverlay.classList.remove('visible');
+  document.body.classList.remove('ambient-mode');
+  const card = document.querySelector('.card');
+  card.style.opacity   = '0';
+  card.style.transform = 'scale(0.96)';
+  card.offsetHeight; // force reflow
+  card.style.transition = 'opacity 380ms ease, transform 380ms ease';
+  card.style.opacity    = '1';
+  card.style.transform  = 'scale(1)';
+  setTimeout(() => { card.style.cssText = ''; }, 420);
+}
+
+if (ambientBtn) {
+  ambientBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    isAmbient ? exitAmbient() : enterAmbient();
+  });
+}
+
+// Tapping anywhere outside the overlay controls exits ambient mode
+document.addEventListener('click', e => {
+  if (!isAmbient) return;
+  if (ambientOverlay && ambientOverlay.contains(e.target)) return;
+  exitAmbient();
+}, { passive: true });
+
+// Ambient playback controls — reuse existing Spotify actions
+if (ambientPrev) ambientPrev.addEventListener('click', e => {
+  e.stopPropagation();
+  spotifyPlayerAction('previous');
+});
+if (ambientNext) ambientNext.addEventListener('click', e => {
+  e.stopPropagation();
+  spotifyPlayerAction('next');
+});
+
+// Tapping track info toggles pause/play
+if (ambientTrackInfo) ambientTrackInfo.addEventListener('click', async e => {
+  e.stopPropagation();
+  const wasPaused = ambientTrackInfo.classList.contains('paused');
+  ambientTrackInfo.classList.toggle('paused', !wasPaused);
+  await spotifyPlayerAction(wasPaused ? 'play' : 'pause', 'PUT');
+});
+
+// Keep ambient track info in sync whenever the main UI updates
+const _origNpTitleDescriptor = Object.getOwnPropertyDescriptor(npTitle, 'textContent');
+// Simpler: patch updateMusicUI to also sync ambient overlay
+const _origUpdateMusicUI = updateMusicUI;
+// Actually just sync on each poll — npTitle is updated by the poll loop directly,
+// so use a MutationObserver on npTitle
+new MutationObserver(() => syncAmbientTrackInfo()).observe(npTitle, { childList: true, characterData: true, subtree: true });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 // Force GPU recomposite for blurred orbs after first paint — fixes the boxy

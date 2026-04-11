@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="/static/style.css?v=95" />
+  <link rel="stylesheet" href="/static/style.css?v=99" />
 </head>
 <body>
   <canvas id="liquid-glass-bg" class="spline-bg" style="opacity:0"></canvas>
@@ -28,6 +28,11 @@
           covercolor
         </div>
         <div class="header-actions">
+          <button class="icon-btn" id="ambient-btn" title="Ambient mode" aria-label="Ambient mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.79M12 12h.008v.007H12V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+          </button>
           <button class="icon-btn" id="fullscreen-btn" title="Fullscreen" aria-label="Fullscreen">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
@@ -549,7 +554,23 @@
 
   </div>
 
-  <script src="/static/app.js?v=90"></script>
-  <script src="/static/liquid-glass.js?v=4"></script>
+  <!-- ── Ambient mode overlay ── -->
+  <div id="ambient-overlay" aria-live="polite">
+    <div class="ambient-controls">
+      <button class="ambient-ctrl-btn" id="ambient-prev" aria-label="Previous">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <div class="ambient-track-info" id="ambient-track-info">
+        <div id="ambient-title" class="ambient-title">Nothing playing</div>
+        <div id="ambient-artist" class="ambient-artist">—</div>
+      </div>
+      <button class="ambient-ctrl-btn" id="ambient-next" aria-label="Next">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=91"></script>
+  <script src="/static/liquid-glass.js?v=13"></script>
 </body>
 </html>

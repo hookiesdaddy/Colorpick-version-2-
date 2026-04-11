@@ -103,8 +103,7 @@ body {
   z-index: 0;
   pointer-events: none;
   display: block;
-  filter: blur(18px);
-  transform: scale(1.04); /* prevent edge halos from blur */
+  /* No CSS blur — the shader handles its own softness */
 }
 
 /* ── Background orbs (fade out once Spline loads) ───────────────────────────── */
@@ -855,3 +854,73 @@ body.fullscreen-mode #reload-hint { display: none !important; }
 body.fullscreen-mode .np-sync-badge { visibility: hidden; }
 
 body.fullscreen-mode #main-view { gap: 0; }
+
+/* ── Ambient mode ───────────────────────────────────────────────────────────── */
+body.ambient-mode .card { display: none !important; }
+
+/* Boost orb presence without the card competing */
+body.ambient-mode .orb { opacity: calc(var(--orb-opacity) * 1.5) !important; }
+
+/* Ambient overlay — fixed bar at bottom */
+#ambient-overlay {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+  white-space: nowrap;
+}
+#ambient-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ambient-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+}
+.ambient-ctrl-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.45);
+  padding: 0.3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, transform 0.12s;
+}
+.ambient-ctrl-btn:hover { color: rgba(255,255,255,0.85); transform: scale(1.12); }
+.ambient-ctrl-btn:active { transform: scale(0.92); }
+.ambient-track-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  cursor: pointer;
+  user-select: none;
+}
+.ambient-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.7);
+  transition: color 0.15s;
+  max-width: 60vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ambient-artist {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.38);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+  max-width: 60vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ambient-track-info:hover .ambient-title { color: rgba(255,255,255,0.9); }
+/* Paused state — dim title to signal pause */
+.ambient-track-info.paused .ambient-title { color: rgba(255,255,255,0.35); }

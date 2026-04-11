@@ -8,7 +8,7 @@
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'high-performance' });
   if (!gl) { canvas.style.display = 'none'; return; }
 
-  const SCALE = 0.5; // render at half-res, CSS upscales
+  const SCALE = 1.0; // full native res — no upscaling blur
 
   function resize() {
     canvas.width  = Math.round(window.innerWidth  * SCALE * devicePixelRatio);
@@ -42,9 +42,10 @@
     precision mediump float;
     uniform float u_time;
     uniform vec2  u_res;
-    uniform vec3  u_primary;    /* album primary color   */
-    uniform vec3  u_secondary;  /* album secondary color */
-    uniform float u_bpm;        /* beats per minute (0 = no pulse) */
+    uniform vec3  u_primary;
+    uniform vec3  u_secondary;
+    uniform float u_bpm;
+    uniform float u_light; /* 1.0 = light mode, 0.0 = dark */
 
     /* ── Value noise ─────────────────────────────────────────────── */
     float hash(vec3 p) {
@@ -61,34 +62,43 @@
         mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)), f.x),
             mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)), f.x), f.y), f.z);
     }
-    float fbm(vec3 p) {
-      return vnoise(p)*0.5 + vnoise(p*2.0)*0.25 + vnoise(p*4.0)*0.125;
+    /* ── Smooth-min (polynomial) ─────────────────────────────────── */
+    float smin(float a, float b, float k) {
+      float h = max(k - abs(a - b), 0.0) / k;
+      return min(a, b) - h * h * k * 0.25;
     }
 
-    /* ── Blob SDF ────────────────────────────────────────────────── */
+    /* ── Blob SDF — smooth-min of orbiting spheres ───────────────── */
+    /* True SDF: never self-intersects, no fold-through artifacts.   */
     float sdf(vec3 p) {
       float t = u_time;
-      vec3 q = p + (fbm(p*1.1 + vec3(t*0.06,t*0.045,t*0.07)) - 0.5) * 0.60;
-      q      += (fbm(q*1.7  + vec3(t*0.035,t*0.055,t*0.03)) - 0.5) * 0.22;
-      float beat = u_bpm > 0.0 ? pow(max(sin(u_time * u_bpm / 60.0 * 6.2832), 0.0), 3.0) * 0.09 : 0.0;
-      return length(q) - 1.05 - beat;
+      /* Central sphere */
+      float d = length(p) - 0.88;
+      /* Three satellite lobes orbiting at different speeds/axes */
+      d = smin(d, length(p - vec3(sin(t*0.11)*0.52, cos(t*0.13)*0.48, sin(t*0.09)*0.44)) - 0.62, 0.44);
+      d = smin(d, length(p - vec3(cos(t*0.07)*0.58, sin(t*0.15)*0.52, cos(t*0.12)*0.48)) - 0.58, 0.44);
+      d = smin(d, length(p - vec3(sin(t*0.14)*0.44, cos(t*0.08)*0.56, sin(t*0.17)*0.50)) - 0.54, 0.40);
+      /* Mild surface texture — small enough to never cause folds    */
+      d += (vnoise(p * 2.8 + t * 0.05) - 0.5) * 0.055;
+      return d;
     }
 
     /* ── Sphere-trace ────────────────────────────────────────────── */
+    /* True SDF: can use aggressive step size, fewer iterations.     */
     float march(vec3 ro, vec3 rd) {
       float t = 0.4;
       for (int i = 0; i < 64; i++) {
         float d = sdf(ro + rd * t);
-        if (d < 0.004) return t;
+        if (d < 0.002) return t;
         if (t > 4.5)   return -1.0;
-        t += d * 0.65;
+        t += d * 0.88;
       }
       return -1.0;
     }
 
     /* ── Normal ──────────────────────────────────────────────────── */
     vec3 calcNormal(vec3 p) {
-      const float e = 0.004;
+      const float e = 0.003;
       return normalize(vec3(
         sdf(p+vec3(e,0,0)) - sdf(p-vec3(e,0,0)),
         sdf(p+vec3(0,e,0)) - sdf(p-vec3(0,e,0)),
@@ -96,74 +106,93 @@
       ));
     }
 
-    /* ── Album-reactive iridescent palette ───────────────────────── */
-    /* Sweeps between primary and secondary with metallic shimmer.    */
+    /* ── Album-reactive palette ──────────────────────────────────── */
+    /* Blends primary↔secondary with a mild iridescent shimmer.      */
     vec3 palette(float t) {
-      /* Smooth blend between primary and secondary */
       float blend = sin(t * 6.2832) * 0.5 + 0.5;
       vec3 col = mix(u_primary, u_secondary, blend);
 
-      /* Boost brightness and punch up saturation */
-      col *= 1.8;
-      float minC = min(col.r, min(col.g, col.b));
-      col -= minC * 0.45; /* deepen shadows between the two colors */
+      /* Restrained brightness — preserve hue, avoid blowout */
+      col = clamp(col * 1.08, 0.0, 1.0);
+      float lum = dot(col, vec3(0.299, 0.587, 0.114));
+      col = mix(vec3(lum), col, 1.4); /* push saturation without lifting brightness */
 
-      /* Add an iridescent shimmer highlight (bright near-white flash) */
-      float shimmer = pow(max(sin(t * 6.2832 * 1.5 + 0.9), 0.0), 4.0);
-      col = mix(col, vec3(1.0, 0.97, 0.92), shimmer * 0.30);
+      /* Very subtle shimmer — just a hint, not a white wash */
+      float shimmer = pow(max(sin(t * 6.2832 * 1.5 + 0.9), 0.0), 8.0);
+      col = mix(col, vec3(1.0, 0.97, 0.94), shimmer * 0.10);
 
       return clamp(col, 0.0, 1.0);
     }
 
-    void main() {
-      vec2 uv = (gl_FragCoord.xy * 2.0 - u_res) / min(u_res.x, u_res.y);
+    /* ── Single-sample render at a given fragment coord ─────────── */
+    vec3 render(vec2 fc) {
+      vec2 uv = (fc * 2.0 - u_res) / min(u_res.x, u_res.y);
 
-      vec3 ro = vec3(0.0, 0.15, 3.2);
+      vec3 ro = vec3(0.0, 0.0, 3.2);
       vec3 rd = normalize(vec3(uv.x, uv.y, -2.0));
 
-      /* Background: very dark version of the primary color */
-      float bgD = length(uv);
-      vec3 bg   = mix(u_primary * 0.08 + vec3(0.01), u_primary * 0.02, bgD * 0.7);
-      bg       += u_primary * 0.12 * exp(-bgD * 1.6);
-      vec3 col  = bg;
+      /* Atmospheric background */
+      float bgD    = length(uv);
+      vec3  midCol = mix(u_primary, u_secondary, 0.5);
+      /* Base: near-black in dark mode, light lavender in light mode  */
+      vec3  bg     = mix(vec3(0.007, 0.007, 0.010), vec3(0.847, 0.847, 0.910), u_light);
+      /* Reduced glow — just enough to show the orb colors bleed out  */
+      bg += midCol    * mix(0.12, 0.05, u_light) * exp(-bgD * 1.3);
+      bg += u_primary * mix(0.05, 0.02, u_light) * exp(-bgD * 0.6);
 
-      float t = march(ro, rd);
+      vec3 col = bg;
 
-      if (t > 0.0) {
-        vec3 p = ro + rd * t;
+      float hit = march(ro, rd);
+
+      if (hit > 0.0) {
+        vec3 p = ro + rd * hit;
         vec3 n = calcNormal(p);
         vec3 v = -rd;
         vec3 r = reflect(rd, n);
 
-        /* Fresnel */
-        float fr = pow(1.0 - max(dot(n, v), 0.0), 2.5);
+        float fr  = pow(1.0 - max(dot(n, v), 0.0), 2.2);
 
-        /* Hue position on blob surface drives color sweep */
         float hue = dot(n, vec3(0.55, 0.80, 0.30))
-                  + vnoise(p * 2.2 + u_time * 0.035) * 0.45;
-        hue = fract(hue * 0.65 + u_time * 0.022);
+                  + vnoise(p * 2.0 + u_time * 0.03) * 0.40;
+        hue = fract(hue * 0.65 + u_time * 0.018);
 
-        vec3 surf = palette(hue) * 2.0;
+        vec3 surf = palette(hue) * 1.05;
 
-        /* Three specular lights — white key, secondary-tinted fill, primary-tinted back */
-        float s1 = pow(max(dot(r, normalize(vec3( 1.6, 2.2, 1.3))), 0.0), 90.0);
-        float s2 = pow(max(dot(r, normalize(vec3(-1.3,-0.9, 1.0))), 0.0), 42.0);
-        float s3 = pow(max(dot(r, normalize(vec3( 0.4,-1.9, 0.9))), 0.0), 32.0);
+        float s1 = pow(max(dot(r, normalize(vec3( 1.6, 2.2, 1.3))), 0.0), 160.0);
+        float s2 = pow(max(dot(r, normalize(vec3(-1.3,-0.9, 1.0))), 0.0),  48.0);
+        float s3 = pow(max(dot(r, normalize(vec3( 0.4,-1.9, 0.9))), 0.0),  36.0);
+        float rim = pow(1.0 - max(dot(n, v), 0.0), 5.0);
 
-        /* Rim light tinted by secondary */
-        float rim = pow(1.0 - max(dot(n, v), 0.0), 4.5);
+        col  = surf * mix(0.60, 0.92, fr);
+        col += vec3(1.00, 0.98, 0.95)           * s1 * 0.9;
+        col += mix(u_secondary, vec3(1.0), 0.4) * s2 * 0.6;
+        col += mix(u_primary,   vec3(1.0), 0.3) * s3 * 0.5;
+        col += u_secondary * 1.0                * rim * 0.4;
 
-        col  = surf * mix(0.65, 1.15, fr);
-        col += vec3(1.00, 0.97, 0.93)           * s1 * 3.2;  /* white key spec */
-        col += mix(u_secondary, vec3(1.0), 0.4) * s2 * 1.2;  /* tinted fill    */
-        col += mix(u_primary,   vec3(1.0), 0.3) * s3 * 1.0;  /* tinted back    */
-        col += u_secondary * 1.4                * rim * 0.7;  /* secondary rim  */
+        float edgeFade = 1.0 - smoothstep(0.0, 0.18, fr);
+        col = mix(col, bg * 2.5, (1.0 - edgeFade) * fr * 0.3);
       }
 
-      /* Vignette + gamma */
-      col *= 1.0 - 0.35 * dot(uv*0.55, uv*0.55);
-      col  = pow(max(col, 0.0), vec3(0.4545));
+      /* Vignette (pre-gamma, shared across samples) */
+      vec2 uvv = (fc * 2.0 - u_res) / min(u_res.x, u_res.y);
+      col *= 1.0 - 0.28 * dot(uvv * 0.5, uvv * 0.5);
 
+      return col;
+    }
+
+    void main() {
+      /* 2-sample rotated-grid SSAA — smooth sub-pixel edges cheaply */
+      vec3 col  = render(gl_FragCoord.xy + vec2( 0.25,  0.25));
+           col += render(gl_FragCoord.xy + vec2(-0.25, -0.25));
+      col *= 0.5;
+
+      /* Beat brightness flash (applied once, after averaging) */
+      if (u_bpm > 0.0) {
+        float beat = pow(max(sin(u_time * u_bpm / 60.0 * 6.2832), 0.0), 3.0);
+        col *= 1.0 + beat * 0.50;
+      }
+
+      col = pow(max(col, 0.0), vec3(0.4545));
       gl_FragColor = vec4(col, 1.0);
     }
   `);
@@ -185,6 +214,7 @@
   const uPrimary  = gl.getUniformLocation(prog, 'u_primary');
   const uSecondary= gl.getUniformLocation(prog, 'u_secondary');
   const uBpm      = gl.getUniformLocation(prog, 'u_bpm');
+  const uLight    = gl.getUniformLocation(prog, 'u_light');
 
   gl.enableVertexAttribArray(aPos);
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
@@ -203,13 +233,11 @@
   // Ensure BPM is always 0 until a track explicitly sets it
   window._trackBpm = 0;
 
-  // Default colors when no track playing (rich purple / blue)
-  const DEFAULT_PRIMARY   = [0.388, 0.400, 0.945]; /* logo purple #6366f1 (= --accent default)        */
-  const DEFAULT_SECONDARY = [0.925, 0.282, 0.600]; /* logo pink  #ec4899 (= --secondary-color default) */
+  const DEFAULT_PRIMARY   = [0.388, 0.400, 0.945]; /* logo purple #6366f1 */
+  const DEFAULT_SECONDARY = [0.925, 0.282, 0.600]; /* logo pink  #ec4899 */
 
   let curPrimary   = DEFAULT_PRIMARY.slice();
   let curSecondary = DEFAULT_SECONDARY.slice();
-  // Smoothly lerp toward target so color transitions are gradual
   let tgtPrimary   = DEFAULT_PRIMARY.slice();
   let tgtSecondary = DEFAULT_SECONDARY.slice();
 
@@ -231,13 +259,10 @@
   function lerp(a, b, t) { return a + (b - a) * t; }
 
   function draw() {
-    // Pause rendering when orbs theme is active
     if (window._bgTheme === 'orbs') { rafId = requestAnimationFrame(draw); return; }
 
-    // Re-read CSS vars every 30 frames (~0.5s) — reliable without MutationObserver
     if (frameCount++ % 30 === 0) updateTargets();
 
-    // Smoothly interpolate toward target colors (~1s transition at 60fps)
     const k = 0.04;
     for (let i = 0; i < 3; i++) {
       curPrimary[i]   = lerp(curPrimary[i],   tgtPrimary[i],   k);
@@ -249,6 +274,7 @@
     gl.uniform3fv(uPrimary,  curPrimary);
     gl.uniform3fv(uSecondary,curSecondary);
     gl.uniform1f(uBpm,       window._trackBpm || 0);
+    gl.uniform1f(uLight,     document.body.classList.contains('theme-light') ? 1.0 : 0.0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     rafId = requestAnimationFrame(draw);
   }
