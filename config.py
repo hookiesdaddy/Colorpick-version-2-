@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    version: str = "0.9.1"
+    version: str = "0.9.2"
     max_image_size_bytes: int = 10 * 1024 * 1024  # 10MB
 
     govee_api_key: str = ""
