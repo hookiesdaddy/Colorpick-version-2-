@@ -90,6 +90,7 @@ const npArtist          = document.getElementById('np-artist');
 const npSyncLabel       = document.getElementById('np-sync-label');
 const npSyncBadge       = document.getElementById('np-sync-badge');
 const colorGradientBox  = document.getElementById('color-gradient-box');
+const allToggleSwitches = document.querySelectorAll('.toggle-switch'); // cached — elements are static
 const cacheTog          = document.getElementById('cache-toggle');
 const pollSlider        = document.getElementById('poll-rate-slider');
 const pollRateVal       = document.getElementById('poll-rate-value');
@@ -432,7 +433,7 @@ function updateActiveChip() {
   secondaryChip.classList.toggle('active', useSec);
   secondaryChip.style.setProperty('--chip-color', lastSecondary?.hex ?? lastPrimary.hex);
 
-  document.querySelectorAll('.toggle-switch').forEach(sw => {
+  allToggleSwitches.forEach(sw => {
     sw.style.setProperty('--toggle-active-color', activeHex);
   });
   setLightsBtn.style.setProperty('--active-color', activeHex);
@@ -1411,7 +1412,13 @@ async function spotifyExchangeCode(code) {
   return data;
 }
 
+let _spotifyRefreshPromise = null; // singleton: concurrent callers share one in-flight request
 async function spotifyRefresh() {
+  if (_spotifyRefreshPromise) return _spotifyRefreshPromise;
+  _spotifyRefreshPromise = _doSpotifyRefresh().finally(() => { _spotifyRefreshPromise = null; });
+  return _spotifyRefreshPromise;
+}
+async function _doSpotifyRefresh() {
   const refresh = localStorage.getItem(LS_SPOTIFY_REFRESH);
   const clientId = localStorage.getItem(LS_SPOTIFY_CLIENT_ID);
   if (!refresh || !clientId) return null;
@@ -1635,19 +1642,5 @@ updateMusicUI();
   if (localStorage.getItem(LS_SPOTIFY_TOKEN) || (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY))) {
     localStorage.setItem(LS_LFM_SYNC, 'true');
     startLfmSync();
-  } else if (false) {
-    // legacy branch — no longer reached; kept as placeholder
-    (async () => {
-      try {
-        const track = null;
-        if (track) {
-          npTitle.textContent  = track.title;
-          npArtist.textContent = track.artist;
-          if (track.art) setArtSrc(track.art);
-          lfmLastTrackKey = `${track.artist}|||${track.title}`;
-          updateMusicUI();
-        }
-      } catch {}
-    })();
   }
 })()

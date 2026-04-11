@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple
 import httpx
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
@@ -19,6 +20,7 @@ from tools.extract_color import extract_dominant_color
 
 app = FastAPI(title="colorpick", version=settings.version)
 
+app.add_middleware(GZipMiddleware, minimum_size=512)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
