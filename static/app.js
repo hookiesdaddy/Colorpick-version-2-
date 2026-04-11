@@ -1626,18 +1626,31 @@ npSyncBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key ==
 
 // ── Fullscreen / display mode ─────────────────────────────────────────────────
 let isFullscreen = false;
+let fsExiting    = false;
 let lastActivity = Date.now();
 
 function enterFullscreen() {
-  if (isFullscreen) return;
+  if (isFullscreen || fsExiting) return;
   isFullscreen = true;
   document.body.classList.add('fullscreen-mode');
 }
 
 function exitFullscreen() {
-  if (!isFullscreen) return;
-  isFullscreen = false;
+  if (!isFullscreen || fsExiting) return;
+  fsExiting = true;
+  // Phase 1: play exit animation (hero fades/scales down, card stays expanded)
+  document.body.classList.add('fullscreen-exiting');
   document.body.classList.remove('fullscreen-mode');
+  setTimeout(() => {
+    // Phase 2: snap back to card + fade hero back in
+    document.body.classList.remove('fullscreen-exiting');
+    isFullscreen = false;
+    document.body.classList.add('fullscreen-restore');
+    setTimeout(() => {
+      document.body.classList.remove('fullscreen-restore');
+      fsExiting = false;
+    }, 320);
+  }, 340);
 }
 
 function resetActivity() {
