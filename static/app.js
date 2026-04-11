@@ -1625,38 +1625,99 @@ npSyncBadge.addEventListener('click', () => {
 npSyncBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') npSyncBadge.click(); });
 
 // ── Fullscreen / display mode ─────────────────────────────────────────────────
-let isFullscreen = false;
-let fsExiting    = false;
-let lastActivity = Date.now();
+let isFullscreen   = false;
+let fsExiting      = false;
+let lastActivity   = Date.now();
+let _savedCardRect = null; // card rect captured before shrink, used for grow-back
+
+// Animate the card's height/position so the art stays fixed on screen.
+// chrome elements must already be at opacity:0 before calling this.
+function _animateCard(fromH, fromTop, toH, toTop, duration, cb) {
+  const card = document.querySelector('.card');
+  const rect = card.getBoundingClientRect();
+  card.style.cssText = [
+    'position:fixed',
+    `top:${fromTop}px`,
+    `left:${rect.left}px`,
+    `width:${rect.width}px`,
+    'max-width:none',
+    `height:${fromH}px`,
+    'overflow:hidden',
+    `transition:height ${duration}ms cubic-bezier(0.4,0,0.2,1),top ${duration}ms cubic-bezier(0.4,0,0.2,1)`,
+    'z-index:10',
+    'margin:0',
+  ].join(';');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    card.style.height = toH + 'px';
+    card.style.top    = toTop + 'px';
+  }));
+  setTimeout(() => { card.style.cssText = ''; cb(); }, duration + 20);
+}
 
 function enterFullscreen() {
   if (isFullscreen || fsExiting) return;
   isFullscreen = true;
-  // Phase 1: fade chrome out (240ms)
+
+  // Phase 1: fade chrome out (220ms)
   document.body.classList.add('fs-fading');
-  // Phase 2: snap box around hero — chrome was invisible so no flash
+
   setTimeout(() => {
     document.body.classList.remove('fs-fading');
-    document.body.classList.add('fullscreen-mode');
-  }, 240);
+
+    // Measure now — chrome is invisible but still in layout
+    const card     = document.querySelector('.card');
+    const hero     = document.getElementById('np-hero');
+    const header   = document.querySelector('#main-view > header');
+    const mainView = document.getElementById('main-view');
+    const cardRect = card.getBoundingClientRect();
+
+    _savedCardRect = cardRect; // save for exit
+
+    const padTop = parseFloat(getComputedStyle(card).paddingTop);
+    const padBot = parseFloat(getComputedStyle(card).paddingBottom);
+    const gap    = parseFloat(getComputedStyle(mainView).gap) || 24;
+    const headH  = header ? header.offsetHeight : 0;
+    const heroH  = hero.offsetHeight;
+
+    const fromH   = cardRect.height;
+    const fromTop = cardRect.top;
+    const toH     = heroH + padTop + padBot;
+    const toTop   = (window.innerHeight - toH) / 2; // centered = exact flex position
+
+    // Phase 2: smoothly shrink box (art stays in place because toTop accounts for header)
+    _animateCard(fromH, fromTop, toH, toTop, 360, () => {
+      document.body.classList.add('fullscreen-mode'); // chrome → display:none
+    });
+  }, 220);
 }
 
 function exitFullscreen() {
   if (!isFullscreen || fsExiting) return;
   fsExiting = true;
-  // Phase 1: hero slides out, chrome stays hidden
+
+  // Phase 1: hero fades out (260ms), fullscreen-mode still active
   document.body.classList.add('fullscreen-exiting');
-  document.body.classList.remove('fullscreen-mode');
+
   setTimeout(() => {
-    // Phase 2: box snaps back, hero + chrome fade in together
-    document.body.classList.remove('fullscreen-exiting');
+    // Phase 2: remove fullscreen-mode (chrome re-enters layout at opacity:0)
+    document.body.classList.remove('fullscreen-mode');
     isFullscreen = false;
-    document.body.classList.add('fullscreen-restore');
-    setTimeout(() => {
-      document.body.classList.remove('fullscreen-restore');
-      fsExiting = false;
-    }, 300);
-  }, 300);
+
+    const card    = document.querySelector('.card');
+    const cardRect = card.getBoundingClientRect(); // current (small) rect
+    const toH     = _savedCardRect ? _savedCardRect.height : card.scrollHeight;
+    const toTop   = (window.innerHeight - toH) / 2;
+
+    // Smoothly grow box back
+    _animateCard(cardRect.height, cardRect.top, toH, toTop, 360, () => {
+      document.body.classList.remove('fullscreen-exiting');
+      document.body.classList.add('fullscreen-restore');
+      setTimeout(() => {
+        document.body.classList.remove('fullscreen-restore');
+        fsExiting = false;
+      }, 300);
+    });
+  }, 260);
 }
 
 function resetActivity() {
