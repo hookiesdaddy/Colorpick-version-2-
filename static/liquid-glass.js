@@ -158,15 +158,15 @@
 
         vec3 surf = palette(hue) * 1.05;
 
-        float s1 = pow(max(dot(r, normalize(vec3( 1.6, 2.2, 1.3))), 0.0), 160.0);
-        float s2 = pow(max(dot(r, normalize(vec3(-1.3,-0.9, 1.0))), 0.0),  48.0);
-        float s3 = pow(max(dot(r, normalize(vec3( 0.4,-1.9, 0.9))), 0.0),  36.0);
+        float s1 = pow(max(dot(r, normalize(vec3( 1.6, 2.2, 1.3))), 0.0),  72.0);
+        float s2 = pow(max(dot(r, normalize(vec3(-1.3,-0.9, 1.0))), 0.0),  32.0);
+        float s3 = pow(max(dot(r, normalize(vec3( 0.4,-1.9, 0.9))), 0.0),  24.0);
         float rim = pow(1.0 - max(dot(n, v), 0.0), 5.0);
 
         col  = surf * mix(0.60, 0.92, fr);
-        col += vec3(1.00, 0.98, 0.95)           * s1 * 0.9;
-        col += mix(u_secondary, vec3(1.0), 0.4) * s2 * 0.6;
-        col += mix(u_primary,   vec3(1.0), 0.3) * s3 * 0.5;
+        col += vec3(1.00, 0.98, 0.95)           * s1 * 0.40;
+        col += mix(u_secondary, vec3(1.0), 0.4) * s2 * 0.28;
+        col += mix(u_primary,   vec3(1.0), 0.3) * s3 * 0.22;
         col += u_secondary * 1.0                * rim * 0.4;
 
         float edgeFade = 1.0 - smoothstep(0.0, 0.18, fr);
