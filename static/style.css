@@ -798,17 +798,15 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 
 /* ── Fullscreen / display mode ─────────────────────────────────────────────── */
 
-/* Phase 1 — fade chrome out before the box snaps */
-body.fs-fading header          { opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
-body.fs-fading #result         { opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
-body.fs-fading .np-sync-badge  { opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
-body.fs-fading #options-btn    { opacity: 0; pointer-events: none; transition: opacity 0.22s ease; }
+/* Chrome elements that collapse during the animation have overflow:hidden set
+   inline by JS so they clip cleanly. Once animation finishes, fullscreen-mode
+   locks them out with display:none and inline styles are cleared. */
 
-/* Phase 2 — box has shrunk via JS; chrome gets display:none */
 body.fullscreen-mode header,
 body.fullscreen-mode #result,
 body.fullscreen-mode #options-panel,
 body.fullscreen-mode #options-btn,
+body.fullscreen-mode .controls-bar,
 body.fullscreen-mode .np-sync-badge,
 body.fullscreen-mode #no-service,
 body.fullscreen-mode #error,
@@ -816,22 +814,3 @@ body.fullscreen-mode #reload-hint { display: none !important; }
 
 body.fullscreen-mode #main-view { gap: 0; }
 body.fullscreen-mode .np-hero   { padding: 0.5rem 0 0; gap: 1.25rem; }
-
-/* Exit phase 1 — hero fades out, chrome stays hidden (fullscreen-mode still active) */
-@keyframes fs-exit { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(12px); } }
-body.fullscreen-exiting .np-hero { animation: fs-exit 0.26s cubic-bezier(0.4,0,1,1) both !important; }
-
-/* Exit phase 2 — fullscreen-mode removed; chrome visible but opacity:0 while box grows */
-body.fullscreen-exiting header,
-body.fullscreen-exiting #result,
-body.fullscreen-exiting .np-sync-badge,
-body.fullscreen-exiting #options-btn { opacity: 0 !important; pointer-events: none; }
-
-/* Restore — hero and chrome fade back in together after box has grown */
-@keyframes fs-restore { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes chrome-in  { from { opacity: 0; } to { opacity: 1; } }
-body.fullscreen-restore .np-hero             { animation: fs-restore 0.28s ease both; }
-body.fullscreen-restore header               { animation: chrome-in  0.28s ease both; }
-body.fullscreen-restore .np-sync-badge,
-body.fullscreen-restore #options-btn         { animation: chrome-in  0.28s ease both; }
-body.fullscreen-restore #result:not(.hidden) { animation: chrome-in  0.28s ease both; }

@@ -1625,99 +1625,115 @@ npSyncBadge.addEventListener('click', () => {
 npSyncBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') npSyncBadge.click(); });
 
 // ── Fullscreen / display mode ─────────────────────────────────────────────────
-let isFullscreen   = false;
-let fsExiting      = false;
-let lastActivity   = Date.now();
-let _savedCardRect = null; // card rect captured before shrink, used for grow-back
+let isFullscreen  = false;
+let fsExiting     = false;
+let lastActivity  = Date.now();
+let _savedHeights = null; // measurements before collapse, restored on exit
 
-// Animate the card's height/position so the art stays fixed on screen.
-// chrome elements must already be at opacity:0 before calling this.
-function _animateCard(fromH, fromTop, toH, toTop, duration, cb) {
-  const card = document.querySelector('.card');
-  const rect = card.getBoundingClientRect();
-  card.style.cssText = [
-    'position:fixed',
-    `top:${fromTop}px`,
-    `left:${rect.left}px`,
-    `width:${rect.width}px`,
-    'max-width:none',
-    `height:${fromH}px`,
-    'overflow:hidden',
-    `transition:height ${duration}ms cubic-bezier(0.4,0,0.2,1),top ${duration}ms cubic-bezier(0.4,0,0.2,1)`,
-    'z-index:10',
-    'margin:0',
-  ].join(';');
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    card.style.height = toH + 'px';
-    card.style.top    = toTop + 'px';
-  }));
-  setTimeout(() => { card.style.cssText = ''; cb(); }, duration + 20);
-}
+const FS_DUR = 370; // ms for height/opacity collapse animation
 
+// Collapse chrome elements in-place: header folds up from the top,
+// controls fold down from the bottom. The np-hero stays put — the card
+// naturally shrinks around it. No position:fixed, no layout jump.
 function enterFullscreen() {
   if (isFullscreen || fsExiting) return;
   isFullscreen = true;
 
-  // Phase 1: fade chrome out (220ms)
-  document.body.classList.add('fs-fading');
+  const header      = document.querySelector('#main-view > header');
+  const controlsBar = document.querySelector('.controls-bar');
+  const result      = document.getElementById('result');
+  const mainViewEl  = document.getElementById('main-view');
+  const npSyncBadge = document.getElementById('np-sync-badge');
+  const card        = document.querySelector('.card');
 
+  // Measure before any DOM changes
+  const headerH   = header      ? header.offsetHeight      : 0;
+  const controlsH = controlsBar ? controlsBar.offsetHeight : 0;
+  const resultH   = (result && !result.classList.contains('hidden')) ? result.offsetHeight : 0;
+  const gapVal    = parseFloat(getComputedStyle(mainViewEl).gap) || 0;
+  _savedHeights   = { headerH, controlsH, resultH, gapVal };
+
+  // Pin explicit pixel heights so CSS transitions have a concrete "from" value
+  if (header)               { header.style.height = headerH + 'px';       header.style.overflow = 'hidden'; }
+  if (controlsBar)          { controlsBar.style.height = controlsH + 'px'; controlsBar.style.overflow = 'hidden'; }
+  if (result && resultH > 0){ result.style.height = resultH + 'px';       result.style.overflow = 'hidden'; }
+  mainViewEl.style.gap = gapVal + 'px';
+
+  // Force reflow so browser records the "from" state
+  card.offsetHeight; // eslint-disable-line no-unused-expressions
+
+  // Attach transitions
+  const tCollapse = `height ${FS_DUR}ms cubic-bezier(0.4,0,0.2,1), opacity ${Math.round(FS_DUR * 0.65)}ms ease`;
+  if (header)               header.style.transition = tCollapse;
+  if (controlsBar)          controlsBar.style.transition = tCollapse;
+  if (result && resultH > 0) result.style.transition = tCollapse;
+  if (npSyncBadge)          npSyncBadge.style.transition = `opacity ${Math.round(FS_DUR * 0.5)}ms ease`;
+  mainViewEl.style.transition = `gap ${FS_DUR}ms cubic-bezier(0.4,0,0.2,1)`;
+
+  // Trigger collapse
+  if (header)               { header.style.height = '0';      header.style.opacity = '0'; }
+  if (controlsBar)          { controlsBar.style.height = '0'; controlsBar.style.opacity = '0'; }
+  if (result && resultH > 0){ result.style.height = '0';      result.style.opacity = '0'; }
+  if (npSyncBadge)          npSyncBadge.style.opacity = '0';
+  mainViewEl.style.gap = '0';
+
+  // After animation: lock in with fullscreen-mode (display:none) and clear inline styles
   setTimeout(() => {
-    document.body.classList.remove('fs-fading');
-
-    // Measure now — chrome is invisible but still in layout
-    const card     = document.querySelector('.card');
-    const hero     = document.getElementById('np-hero');
-    const header   = document.querySelector('#main-view > header');
-    const mainView = document.getElementById('main-view');
-    const cardRect = card.getBoundingClientRect();
-
-    _savedCardRect = cardRect; // save for exit
-
-    const padTop = parseFloat(getComputedStyle(card).paddingTop);
-    const padBot = parseFloat(getComputedStyle(card).paddingBottom);
-    const gap    = parseFloat(getComputedStyle(mainView).gap) || 24;
-    const headH  = header ? header.offsetHeight : 0;
-    const heroH  = hero.offsetHeight;
-
-    const fromH   = cardRect.height;
-    const fromTop = cardRect.top;
-    const toH     = heroH + padTop + padBot;
-    const toTop   = (window.innerHeight - toH) / 2; // centered = exact flex position
-
-    // Phase 2: smoothly shrink box (art stays in place because toTop accounts for header)
-    _animateCard(fromH, fromTop, toH, toTop, 360, () => {
-      document.body.classList.add('fullscreen-mode'); // chrome → display:none
-    });
-  }, 220);
+    document.body.classList.add('fullscreen-mode');
+    [header, controlsBar, result, npSyncBadge].forEach(el => { if (el) el.style.cssText = ''; });
+    mainViewEl.style.cssText = '';
+  }, FS_DUR + 40);
 }
 
 function exitFullscreen() {
   if (!isFullscreen || fsExiting) return;
   fsExiting = true;
 
-  // Phase 1: hero fades out (260ms), fullscreen-mode still active
-  document.body.classList.add('fullscreen-exiting');
+  const header      = document.querySelector('#main-view > header');
+  const controlsBar = document.querySelector('.controls-bar');
+  const result      = document.getElementById('result');
+  const mainViewEl  = document.getElementById('main-view');
+  const npSyncBadge = document.getElementById('np-sync-badge');
+  const card        = document.querySelector('.card');
 
+  const { headerH = 0, controlsH = 0, resultH = 0, gapVal = 0 } = _savedHeights || {};
+
+  // Pre-pin elements at height 0 while they're still display:none — so when
+  // fullscreen-mode is removed they reappear instantly at height 0 (no snap).
+  if (header)               { header.style.height = '0';      header.style.overflow = 'hidden'; header.style.opacity = '0'; }
+  if (controlsBar)          { controlsBar.style.height = '0'; controlsBar.style.overflow = 'hidden'; controlsBar.style.opacity = '0'; }
+  if (result && resultH > 0){ result.style.height = '0';      result.style.overflow = 'hidden'; result.style.opacity = '0'; }
+  if (npSyncBadge)          npSyncBadge.style.opacity = '0';
+  mainViewEl.style.gap = '0';
+
+  // Remove fullscreen-mode — chrome re-enters layout but is already pinned at height 0
+  document.body.classList.remove('fullscreen-mode');
+  isFullscreen = false;
+
+  // Force reflow so browser registers the height-0 "from" state
+  card.offsetHeight; // eslint-disable-line no-unused-expressions
+
+  // Attach transitions
+  const tExpand = `height ${FS_DUR}ms cubic-bezier(0.4,0,0.2,1), opacity ${Math.round(FS_DUR * 0.65)}ms ease`;
+  if (header)               header.style.transition = tExpand;
+  if (controlsBar)          controlsBar.style.transition = tExpand;
+  if (result && resultH > 0) result.style.transition = tExpand;
+  if (npSyncBadge)          npSyncBadge.style.transition = `opacity ${Math.round(FS_DUR * 0.65)}ms ease`;
+  mainViewEl.style.transition = `gap ${FS_DUR}ms cubic-bezier(0.4,0,0.2,1)`;
+
+  // Expand back to saved heights
+  if (header && headerH)           { header.style.height = headerH + 'px';        header.style.opacity = '1'; }
+  if (controlsBar && controlsH)    { controlsBar.style.height = controlsH + 'px'; controlsBar.style.opacity = '1'; }
+  if (result && resultH > 0)       { result.style.height = resultH + 'px';        result.style.opacity = '1'; }
+  if (npSyncBadge)                 npSyncBadge.style.opacity = '1';
+  mainViewEl.style.gap = gapVal + 'px';
+
+  // After animation: clear inline styles and reset flag
   setTimeout(() => {
-    // Phase 2: remove fullscreen-mode (chrome re-enters layout at opacity:0)
-    document.body.classList.remove('fullscreen-mode');
-    isFullscreen = false;
-
-    const card    = document.querySelector('.card');
-    const cardRect = card.getBoundingClientRect(); // current (small) rect
-    const toH     = _savedCardRect ? _savedCardRect.height : card.scrollHeight;
-    const toTop   = (window.innerHeight - toH) / 2;
-
-    // Smoothly grow box back
-    _animateCard(cardRect.height, cardRect.top, toH, toTop, 360, () => {
-      document.body.classList.remove('fullscreen-exiting');
-      document.body.classList.add('fullscreen-restore');
-      setTimeout(() => {
-        document.body.classList.remove('fullscreen-restore');
-        fsExiting = false;
-      }, 300);
-    });
-  }, 260);
+    [header, controlsBar, result, npSyncBadge].forEach(el => { if (el) el.style.cssText = ''; });
+    mainViewEl.style.cssText = '';
+    fsExiting = false;
+  }, FS_DUR + 40);
 }
 
 function resetActivity() {
