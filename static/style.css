@@ -881,15 +881,15 @@ body.ambient-mode .orb { opacity: calc(var(--orb-opacity) * 1.5) !important; }
   display: flex;
   align-items: center;
   gap: 1.2rem;
-  background: rgba(14, 14, 22, 0.82);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(14, 14, 22, 0.48);
+  border: 1px solid rgba(255,255,255,0.13);
   border-radius: 60px;
   padding: 0.65rem 1.4rem;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
 }
 body.theme-light .ambient-controls {
-  background: rgba(240, 240, 248, 0.88);
-  border-color: rgba(255,255,255,0.6);
+  background: rgba(230, 230, 245, 0.58);
+  border-color: rgba(255,255,255,0.55);
 }
 .ambient-ctrl-btn {
   background: transparent;
