@@ -881,14 +881,14 @@ body.ambient-mode .orb { opacity: calc(var(--orb-opacity) * 1.5) !important; }
   display: flex;
   align-items: center;
   gap: 1.2rem;
-  background: rgba(14, 14, 22, 0.48);
+  background: rgba(14, 14, 22, 0.28);
   border: 1px solid rgba(255,255,255,0.13);
   border-radius: 60px;
   padding: 0.65rem 1.4rem;
   box-shadow: 0 4px 24px rgba(0,0,0,0.35);
 }
 body.theme-light .ambient-controls {
-  background: rgba(230, 230, 245, 0.58);
+  background: rgba(230, 230, 245, 0.35);
   border-color: rgba(255,255,255,0.55);
 }
 .ambient-ctrl-btn {
