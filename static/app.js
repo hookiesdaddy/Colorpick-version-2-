@@ -613,12 +613,14 @@ function showResult(data, { fromSync = false, name = null, size = null, skipHist
   // Save to history
   if (!skipHistory) addHistory({ name, size, primary: lastPrimary.hex, secondary: lastSecondary.hex });
 
-  root.style.setProperty('--primary-color', lastPrimary.hex);
-  root.style.setProperty('--secondary-color', lastSecondary.hex);
-  root.style.setProperty('--accent', lastPrimary.hex);
+  const displayPrimary   = applyColorTransforms(lastPrimary.hex);
+  const displaySecondary = applyColorTransforms(lastSecondary.hex);
+  root.style.setProperty('--primary-color', displayPrimary);
+  root.style.setProperty('--secondary-color', displaySecondary);
+  root.style.setProperty('--accent', displayPrimary);
   root.style.setProperty('--accent-rgb', `${lastPrimary.rgb.r}, ${lastPrimary.rgb.g}, ${lastPrimary.rgb.b}`);
-  bgOrb1.style.background = `radial-gradient(circle, ${lastPrimary.hex}, transparent 55%)`;
-  bgOrb2.style.background = `radial-gradient(circle, ${lastSecondary.hex}, transparent 55%)`;
+  bgOrb1.style.background = `radial-gradient(circle, ${displayPrimary}, transparent 55%)`;
+  bgOrb2.style.background = `radial-gradient(circle, ${displaySecondary}, transparent 55%)`;
 
   hexPrimaryText.textContent   = lastPrimary.hex.toUpperCase();
   rgbPrimary.textContent       = `${data.rgb.r}, ${data.rgb.g}, ${data.rgb.b}`;
@@ -627,6 +629,17 @@ function showResult(data, { fromSync = false, name = null, size = null, skipHist
 
   lightsStatus.classList.add('hidden');
   setTimeout(() => { result.classList.remove('hidden'); updateActiveChip(); }, 350);
+}
+
+function refreshDisplayColors() {
+  if (!lastPrimary) return;
+  const dp = applyColorTransforms(lastPrimary.hex);
+  const ds = applyColorTransforms(lastSecondary.hex);
+  root.style.setProperty('--primary-color', dp);
+  root.style.setProperty('--secondary-color', ds);
+  root.style.setProperty('--accent', dp);
+  bgOrb1.style.background = `radial-gradient(circle, ${dp}, transparent 55%)`;
+  bgOrb2.style.background = `radial-gradient(circle, ${ds}, transparent 55%)`;
 }
 
 function hideResult() {
@@ -862,6 +875,7 @@ if (brightnessSelect) {
   brightnessSelect.addEventListener('change', () => {
     localStorage.setItem(LS_BRIGHTNESS_FLOOR, brightnessSelect.value);
     lastSentHex = null;
+    refreshDisplayColors();
   });
 }
 
@@ -871,6 +885,7 @@ if (satBoostToggle) {
   satBoostToggle.addEventListener('change', () => {
     localStorage.setItem(LS_SAT_BOOST, String(satBoostToggle.checked));
     lastSentHex = null;
+    refreshDisplayColors();
   });
 }
 
