@@ -113,7 +113,7 @@
       vec3 col = mix(u_primary, u_secondary, blend);
 
       /* Restrained brightness — preserve hue, avoid blowout */
-      col = clamp(col * 1.08, 0.0, 1.0);
+      col = clamp(col * 0.88, 0.0, 1.0);
       float lum = dot(col, vec3(0.299, 0.587, 0.114));
       col = mix(vec3(lum), col, 1.4); /* push saturation without lifting brightness */
 
