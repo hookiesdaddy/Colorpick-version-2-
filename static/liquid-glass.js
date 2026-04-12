@@ -137,8 +137,8 @@
       /* Base: near-black in dark mode, light lavender in light mode  */
       vec3  bg     = mix(vec3(0.007, 0.007, 0.010), vec3(0.847, 0.847, 0.910), u_light);
       /* Atmospheric halo — subtle in dark, lighter touch in light */
-      bg += midCol    * mix(0.02, 0.04, u_light) * exp(-bgD * 2.0);
-      bg += u_primary * mix(0.008, 0.015, u_light) * exp(-bgD * 1.0);
+      bg += midCol    * mix(0.01, 0.04, u_light) * exp(-bgD * 2.0);
+      bg += u_primary * mix(0.004, 0.015, u_light) * exp(-bgD * 1.0);
 
       vec3 col = bg;
 
