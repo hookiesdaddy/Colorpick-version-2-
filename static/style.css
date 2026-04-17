@@ -96,7 +96,7 @@ body {
   border: 1px solid var(--border);
 }
 
-/* ── Liquid Glass WebGL background ──────────────────────────────────────────── */
+/* ── Liquid Glass WebGL background — immersive mode only ─────────────────────── */
 .spline-bg {
   position: fixed;
   inset: 0;
@@ -104,34 +104,66 @@ body {
   height: 100%;
   z-index: 0;
   pointer-events: none;
-  display: block;
+  opacity: 0;
+  transition: opacity 0.8s ease;
   /* No CSS blur — the shader handles its own softness */
 }
+body.ambient-mode:not(.ambient-spline):not(.ambient-lights):not(.ambient-simple):not(.ambient-aurora):not(.ambient-mesh):not(.ambient-particles):not(.ambient-ink):not(.ambient-bloom) .spline-bg { opacity: 1; }
+body.ambient-spline    .spline-bg { opacity: 0; }
+body.ambient-lights    .spline-bg { opacity: 0; }
+body.ambient-simple    .spline-bg { opacity: 0; }
+body.ambient-aurora    .spline-bg { opacity: 0; }
+body.ambient-mesh      .spline-bg { opacity: 0; }
+body.ambient-particles .spline-bg { opacity: 0; }
+body.ambient-ink       .spline-bg { opacity: 0; }
+body.ambient-bloom     .spline-bg { opacity: 0; }
 
-/* ── Background orbs (fade out once Spline loads) ───────────────────────────── */
-.bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; transform: translateZ(0); transition: opacity 1.2s ease; }
-.bg-orbs.spline-ready { opacity: 0; }
+/* ── New background canvases / divs ─────────────────────────────────────────── */
+.new-bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+  border: none;
+}
+body.ambient-aurora    #aurora-bg   { opacity: 1; }
+body.ambient-mesh      #mesh-bg     { opacity: 1; }
+body.ambient-particles #canvas2d-bg { opacity: 1; }
+body.ambient-ink       #ink-bg      { opacity: 1; }
+body.ambient-bloom     #canvas2d-bg { opacity: 1; }
+
+/* Hide orbs in modes that own their full background */
+body.ambient-aurora    .bg-orbs,
+body.ambient-ink       .bg-orbs,
+body.ambient-bloom     .bg-orbs,
+body.ambient-mesh      .bg-orbs,
+body.ambient-particles .bg-orbs { opacity: 0 !important; }
+
+/* Mesh background base */
+#mesh-bg { background: var(--bg); overflow: hidden; }
+
+/* Simple solid-color background */
+#ambient-simple-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  background-color: #000;
+  transition: background-color 1.2s ease, opacity 0.8s ease;
+  pointer-events: none;
+}
+body.ambient-simple #ambient-simple-bg { opacity: 1; }
+body.ambient-simple .bg-orbs { opacity: 0 !important; }
+
+/* ── Background orbs (always visible on main UI) ────────────────────────────── */
+.bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; transform: translateZ(0); transition: opacity 0.8s ease; }
 .orb { position: absolute; filter: blur(160px); opacity: var(--orb-opacity); transition: opacity 0.3s ease; will-change: transform, opacity; transform: translateZ(0); }
 .orb-1 { width: max(900px, 75vw); height: max(900px, 75vh); background: radial-gradient(circle, var(--accent), transparent 55%); top: -45vh; left: -35vw; transition: opacity 0.3s ease, background 0.6s ease; }
 .orb-2 { width: max(800px, 70vw); height: max(800px, 70vh); background: radial-gradient(circle, var(--secondary-color), transparent 55%); bottom: -40vh; right: -30vw; transition: opacity 0.3s ease, background 0.6s ease; }
-
-/* ── Background theme overrides ─────────────────────────────────────────────── */
-/* Orbs mode: hide WebGL canvas, always show orbs */
-body.bg-theme-orbs .spline-bg { display: none; }
-body.bg-theme-orbs .bg-orbs { opacity: 1 !important; }
-/* Liquid mode: let spline-ready fade handle it (default behavior) */
-body.bg-theme-liquid .spline-bg { display: block; }
-
-/* ── Background theme pill buttons ─────────────────────────────────────────── */
-.bg-theme-pills { display: flex; gap: 0.25rem; }
-.bg-theme-pill {
-  font-size: 0.75rem; font-weight: 500; padding: 0.25rem 0.65rem;
-  border-radius: 20px; border: 1px solid var(--border);
-  background: transparent; color: var(--text-secondary); cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.bg-theme-pill:hover { background: var(--subtle); color: var(--text-primary); }
-.bg-theme-pill.active { background: rgba(var(--accent-rgb, 99,102,241), 0.15); color: var(--accent); border-color: var(--accent); }
 
 /* ── Extracting state ───────────────────────────────────────────────────────── */
 @keyframes orb-pulse {
@@ -350,6 +382,9 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .copied-toast { font-size: 0.7rem; color: #4ade80; font-weight: 500; }
 .copied-toast.hidden { display: none; }
 
+body.hide-color-values .hex-btn,
+body.hide-color-values .rgb-value { display: none; }
+
 /* ── Toggles ────────────────────────────────────────────────────────────────── */
 .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.7rem 1rem; cursor: pointer; user-select: none; transition: background 0.15s; }
 .toggle-row:hover { background: var(--subtle); }
@@ -563,12 +598,9 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .np-sync-badge.status-orange #np-sync-label { color: #fb923c; }
 .np-sync-badge.status-red    .np-dot        { background: #f87171; }
 .np-sync-badge.status-red    #np-sync-label { color: #f87171; }
-/* paused overrides any status colour */
-.np-sync-badge.paused .np-dot        { background: var(--muted) !important; animation: none !important; }
-.np-sync-badge.paused #np-sync-label { color: var(--muted) !important; }
-.np-sync-badge { cursor: pointer; transition: opacity 0.15s, transform 0.15s; }
-.np-sync-badge:hover { opacity: 0.75; transform: scale(1.04); }
-.np-sync-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 20px; }
+/* Red badge is clickable (opens settings) */
+.np-sync-badge.status-red { cursor: pointer; transition: opacity 0.15s, transform 0.15s; }
+.np-sync-badge.status-red:hover { opacity: 0.75; transform: scale(1.04); }
 .np-title { font-size: 1.05rem; font-weight: 700; color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: font-size 0.4s cubic-bezier(0.4,0,0.2,1), max-width 0.4s ease; }
 .np-artist { font-size: 0.85rem; color: var(--text-secondary); transition: font-size 0.4s cubic-bezier(0.4,0,0.2,1); }
 .np-action-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
@@ -624,6 +656,7 @@ header { display: flex; align-items: center; gap: 0.5rem; }
 .settings-title { font-size: 1rem; font-weight: 600; flex: 1; }
 .settings-section { display: flex; flex-direction: column; gap: 0.75rem; }
 .section-title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.subsection-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); opacity: 0.6; padding: 0.1rem 0 0.2rem; }
 .section-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.55; }
 .app-version { font-size: 0.68rem; color: var(--muted); text-align: center; margin: 0.5rem 0 0; opacity: 0.6; }
 .settings-nav-btn {
@@ -867,6 +900,36 @@ body.ambient-mode .card { display: none !important; }
 /* Boost orb presence without the card competing */
 body.ambient-mode .orb { opacity: calc(var(--orb-opacity) * 1.5) !important; }
 
+/* Spline color overlay — tints the iframe with album hue, slow drift */
+#spline-color-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: hue;
+  background-color: #6366f1; /* default until first color arrives */
+  opacity: 0;
+  transition: background-color 4s ease, opacity 0.8s ease;
+}
+body.ambient-spline #spline-color-overlay { opacity: 0.85; }
+
+/* Spline iframe background — immersive mode only */
+.spline-iframe-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: -80px;           /* push below viewport so the Spline badge is off-screen */
+  width: 100%;
+  height: calc(100% + 80px);
+  border: none;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+body.ambient-spline .spline-iframe-bg { opacity: 1; }
+
 /* Ambient overlay — fixed bar at bottom */
 #ambient-overlay {
   position: fixed;
@@ -878,6 +941,110 @@ body.ambient-mode .orb { opacity: calc(var(--orb-opacity) * 1.5) !important; }
   pointer-events: none;
   transition: opacity 0.45s ease;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Background cycle button wrapper */
+#ambient-bg-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Background cycle button — circular pill next to controls */
+#ambient-bg-cycle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(18, 18, 28, 0.55);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  transition: color 0.15s, transform 0.12s, background 0.15s;
+}
+#ambient-bg-cycle:hover { color: var(--text); transform: scale(1.1); }
+#ambient-bg-cycle:active { transform: scale(0.92); }
+body.theme-light #ambient-bg-cycle {
+  background: rgba(255,255,255,0.45);
+  border-color: rgba(255,255,255,0.70);
+}
+
+/* Background picker menu */
+#ambient-bg-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  background: rgba(18, 18, 28, 0.82);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+  min-width: 110px;
+  transform-origin: bottom right;
+  animation: bg-menu-in 0.15s ease;
+}
+#ambient-bg-menu.hidden { display: none; }
+body.theme-light #ambient-bg-menu {
+  background: rgba(255,255,255,0.80);
+  border-color: rgba(0,0,0,0.10);
+}
+@keyframes bg-menu-in {
+  from { opacity: 0; transform: scale(0.9) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ambient-bg-option {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.ambient-bg-option:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+body.theme-light .ambient-bg-option:hover { background: rgba(0,0,0,0.06); }
+.ambient-bg-option.active {
+  background: rgba(255,255,255,0.10);
+  color: var(--text);
+  font-weight: 600;
+}
+body.theme-light .ambient-bg-option.active { background: rgba(0,0,0,0.08); }
+.ambient-bg-option.active::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+.ambient-bg-option:not(.active)::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
 }
 #ambient-overlay.visible {
   opacity: 1;
@@ -887,15 +1054,15 @@ body.ambient-mode .orb { opacity: calc(var(--orb-opacity) * 1.5) !important; }
   display: flex;
   align-items: center;
   gap: 1.2rem;
-  background: rgba(14, 14, 22, 0.28);
-  border: 1px solid rgba(255,255,255,0.13);
+  background: rgba(18, 18, 28, 0.55);
+  border: 1px solid rgba(255,255,255,0.10);
   border-radius: 60px;
   padding: 0.65rem 1.4rem;
   box-shadow: 0 4px 24px rgba(0,0,0,0.35);
 }
 body.theme-light .ambient-controls {
-  background: rgba(230, 230, 245, 0.35);
-  border-color: rgba(255,255,255,0.55);
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255,255,255,0.70);
 }
 .ambient-ctrl-btn {
   background: transparent;

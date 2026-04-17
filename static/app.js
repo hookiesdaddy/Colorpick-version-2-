@@ -121,6 +121,7 @@ const DEFAULT_FAMILIES = [
 // ── Art cross-fade ────────────────────────────────────────────────────────────
 function setArtSrc(src) {
   if (!src) return;
+  if (window.BackgroundManager) window.BackgroundManager.updateArt(src);
   if (npArt.src === src) {
     npArtWrap.classList.remove('art-loading');
     return;
@@ -621,6 +622,9 @@ function showResult(data, { fromSync = false, name = null, size = null, skipHist
   root.style.setProperty('--accent-rgb', `${lastPrimary.rgb.r}, ${lastPrimary.rgb.g}, ${lastPrimary.rgb.b}`);
   bgOrb1.style.background = `radial-gradient(circle, ${displayPrimary}, transparent 55%)`;
   bgOrb2.style.background = `radial-gradient(circle, ${displaySecondary}, transparent 55%)`;
+  updateSplineOverlay(displayPrimary);
+  updateSimpleBg(displayPrimary);
+  if (window.BackgroundManager) window.BackgroundManager.updateColors(displayPrimary, displaySecondary);
 
   hexPrimaryText.textContent   = lastPrimary.hex.toUpperCase();
   rgbPrimary.textContent       = `${data.rgb.r}, ${data.rgb.g}, ${data.rgb.b}`;
@@ -640,6 +644,9 @@ function refreshDisplayColors() {
   root.style.setProperty('--accent', dp);
   bgOrb1.style.background = `radial-gradient(circle, ${dp}, transparent 55%)`;
   bgOrb2.style.background = `radial-gradient(circle, ${ds}, transparent 55%)`;
+  updateSplineOverlay(dp);
+  updateSimpleBg(dp);
+  if (window.BackgroundManager) window.BackgroundManager.updateColors(dp, ds);
 }
 
 function hideResult() {
@@ -769,11 +776,11 @@ function hexToRgb(hex) {
 }
 
 historyBtn.addEventListener('click', () => {
-  showView(historyView, mainView, 'forward');
+  showView(historyView, settingsView, 'forward');
   renderHistory();
 });
 
-historyBack.addEventListener('click', () => showView(mainView, historyView, 'back'));
+historyBack.addEventListener('click', () => showView(settingsView, historyView, 'back'));
 historyClearBtn.addEventListener('click', () => {
   localStorage.removeItem(LS_HISTORY);
   renderHistory();
@@ -820,8 +827,8 @@ testKeyBtn.addEventListener('click', async () => {
 
 function showKeyStatus(type, msg) { keyStatus.textContent = msg; keyStatus.className = `key-status ${type}`; }
 
-// Remember options toggle
-rememberOptsToggle.checked = localStorage.getItem(LS_REMEMBER_OPTS) === 'true';
+// Remember options toggle (default on)
+rememberOptsToggle.checked = localStorage.getItem(LS_REMEMBER_OPTS) !== 'false';
 if (rememberOptsToggle.checked) {
   brighterToggle.checked    = localStorage.getItem(LS_BRIGHTER)   === 'true';
   prefsToggle.checked       = localStorage.getItem(LS_USE_PREFS)  === 'true';
@@ -882,9 +889,9 @@ if (brightnessSelect) {
   });
 }
 
-// Saturation boost toggle (default off)
+// Saturation boost toggle (default on)
 if (satBoostToggle) {
-  satBoostToggle.checked = localStorage.getItem(LS_SAT_BOOST) === 'true';
+  satBoostToggle.checked = localStorage.getItem(LS_SAT_BOOST) !== 'false';
   satBoostToggle.addEventListener('change', () => {
     localStorage.setItem(LS_SAT_BOOST, String(satBoostToggle.checked));
     lastSentHex = null;
@@ -1071,8 +1078,6 @@ function updateMusicUI() {
   const hasCredentials = !!(localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY));
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
   const hasTrack = lfmLastTrackKey !== null;
-  const paused = localStorage.getItem(LS_LIGHTS_PAUSED) === 'true';
-
   // npHero: always visible (music-only app now)
   npHero.classList.remove('hidden');
 
@@ -1080,11 +1085,8 @@ function updateMusicUI() {
   const hasAnyCredentials = !!(localStorage.getItem(LS_SPOTIFY_TOKEN) ||
     (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY)));
   npSyncBadge.classList.remove('hidden');
-  npSyncBadge.classList.toggle('paused', paused && syncOn);
   if (!hasAnyCredentials) {
     setSyncStatus('red', 'Connect a service');
-  } else if (paused && syncOn) {
-    setSyncStatus('grey', '⏸ Paused');
   }
 
   // Keep gradient visible when syncing and has colors
@@ -1197,7 +1199,6 @@ async function extractFromArt(artUrl, name = null) {
   // ── Helper: send primaryHex → primary devices, secondaryHex → secondary devices ─
   async function maybeSendLight(primaryHex, secondaryHex) {
     if (!syncOn) return;
-    if (localStorage.getItem(LS_LIGHTS_PAUSED) === 'true') return;
     const tPrimary   = applyColorTransforms(primaryHex);
     const tSecondary = applyColorTransforms(secondaryHex ?? primaryHex);
     const sentKey = `${tPrimary}|${tSecondary}`;
@@ -1331,7 +1332,6 @@ function stopLfmSync() {
 async function triggerIdleBehavior() {
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
   if (!syncOn || idleActionSent) return;
-  if (localStorage.getItem(LS_LIGHTS_PAUSED) === 'true') return;
   const behavior = localStorage.getItem(LS_IDLE_BEHAVIOR) || 'keep';
   if (behavior === 'keep') return;
   idleActionSent = true;
@@ -1428,6 +1428,19 @@ function selectService(service) {
 
 serviceLastfmBtn.addEventListener('click', () => toggleServiceRow('lastfm'));
 serviceSpotifyBtn.addEventListener('click', () => toggleServiceRow('spotify'));
+
+// CoverColor row toggle
+const covercolorRow    = document.getElementById('covercolor-row');
+const covercolorRowBtn = document.getElementById('covercolor-row-btn');
+const covercolorConfig = document.getElementById('covercolor-config');
+if (covercolorRowBtn) {
+  covercolorRowBtn.addEventListener('click', () => {
+    const isOpen = !covercolorConfig.classList.contains('hidden');
+    covercolorConfig.classList.toggle('hidden', isOpen);
+    covercolorRow.classList.toggle('open', !isOpen);
+    covercolorRowBtn.setAttribute('aria-expanded', String(!isOpen));
+  });
+}
 
 // Govee row toggle
 goveeRowBtn.addEventListener('click', () => {
@@ -1543,6 +1556,20 @@ if (beatPulseToggle) {
   });
 }
 
+const LS_SHOW_COLOR_VALUES = 'covercolor_show_color_values';
+const showColorValuesToggle = document.getElementById('show-color-values-toggle');
+function applyShowColorValues(show) {
+  document.body.classList.toggle('hide-color-values', !show);
+}
+if (showColorValuesToggle) {
+  showColorValuesToggle.checked = localStorage.getItem(LS_SHOW_COLOR_VALUES) !== 'false';
+  applyShowColorValues(showColorValuesToggle.checked);
+  showColorValuesToggle.addEventListener('change', () => {
+    localStorage.setItem(LS_SHOW_COLOR_VALUES, showColorValuesToggle.checked ? 'true' : 'false');
+    applyShowColorValues(showColorValuesToggle.checked);
+  });
+}
+
 function applyBpm(rawBpm) {
   const enabled = localStorage.getItem(LS_BEAT_PULSE) !== 'false';
   const bpm = enabled ? (rawBpm || 0) : 0;
@@ -1560,6 +1587,7 @@ function applyBpm(rawBpm) {
       orbs.classList.remove('beating');
     }
   }
+  if (window.BackgroundManager) window.BackgroundManager.updateBpm(bpm);
 }
 
 async function spotifyFetchBpm(trackId) {
@@ -1678,19 +1706,12 @@ connectPromptBtn.addEventListener('click', () => {
   settingsView.classList.remove('hidden');
 });
 
-// ── Sync badge: click to pause/resume light updates ───────────────────────────
+// ── Sync badge: click opens settings when no service connected ────────────────
 npSyncBadge.addEventListener('click', () => {
-  const paused = localStorage.getItem(LS_LIGHTS_PAUSED) === 'true';
-  const newPaused = !paused;
-  localStorage.setItem(LS_LIGHTS_PAUSED, String(newPaused));
-  if (!newPaused) {
-    lastSentHex = null; // force immediate re-send on unpause
-    lfmLastTrackKey = null; // trigger re-extraction so colors update right away
-    lfmPoll();
-  }
-  updateMusicUI();
+  const hasAnyCredentials = !!(localStorage.getItem(LS_SPOTIFY_TOKEN) ||
+    (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY)));
+  if (!hasAnyCredentials) showView(settingsView, mainView, 'forward');
 });
-npSyncBadge.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') npSyncBadge.click(); });
 
 // ── Fullscreen / display mode ─────────────────────────────────────────────────
 let isFullscreen  = false;
@@ -1813,7 +1834,7 @@ function resetActivity(e) {
 }
 
 function checkFullscreenTimer() {
-  const idx   = parseInt(localStorage.getItem(LS_FULLSCREEN_DELAY) || '0', 10);
+  const idx   = parseInt(localStorage.getItem(LS_FULLSCREEN_DELAY) ?? '1', 10);
   const delay = FULLSCREEN_SNAPS[idx] || 0;
   if (!delay || isFullscreen || isAmbient) return;
   if (Date.now() - lastActivity >= delay * 1000) enterFullscreen();
@@ -1821,7 +1842,7 @@ function checkFullscreenTimer() {
 
 // Init slider from saved value
 (function initFullscreenSlider() {
-  const saved = parseInt(localStorage.getItem(LS_FULLSCREEN_DELAY) || '0', 10);
+  const saved = parseInt(localStorage.getItem(LS_FULLSCREEN_DELAY) ?? '1', 10);
   if (fullscreenSlider) fullscreenSlider.value = Math.min(saved, FULLSCREEN_SNAPS.length - 1);
   if (fullscreenDelayVal) fullscreenDelayVal.textContent = FULLSCREEN_LABELS[saved] ?? 'Off';
 })();
@@ -1863,11 +1884,75 @@ function syncAmbientTrackInfo() {
   if (ambientArtist) ambientArtist.textContent = npArtist.textContent || '—';
 }
 
+// ── Ambient background mode (goo ↔ spline) ───────────────────────────────────
+const SPLINE_URL       = 'https://my.spline.design/liquidgradientabstractbackground-b0bxN7XE7V3sXnYxs3DzTvC8/';
+const LS_AMBIENT_BG    = 'covercolor_ambient_bg';
+const splineIframe     = document.getElementById('spline-iframe-bg');
+const splineOverlay    = document.getElementById('spline-color-overlay');
+const simpleBg         = document.getElementById('ambient-simple-bg');
+const ambientBgCycleBtn= document.getElementById('ambient-bg-cycle');
+const ambientBgMenu    = document.getElementById('ambient-bg-menu');
+const ambientBgOptions = ambientBgMenu ? ambientBgMenu.querySelectorAll('.ambient-bg-option') : [];
+let   ambientBgMode    = localStorage.getItem(LS_AMBIENT_BG) || 'goo'; // 'goo' | 'spline' | 'lights' | 'simple'
+let   splineLoaded     = false;
+
+function updateSplineOverlay(primaryHex) {
+  if (splineOverlay) splineOverlay.style.backgroundColor = primaryHex;
+}
+
+function updateSimpleBg(primaryHex) {
+  if (simpleBg) simpleBg.style.backgroundColor = primaryHex;
+}
+
+function updateBgMenuActive() {
+  ambientBgOptions.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === ambientBgMode);
+  });
+}
+
+const ALL_AMBIENT_CLASSES = [
+  'ambient-spline','ambient-lights','ambient-simple',
+  'ambient-aurora','ambient-mesh','ambient-particles','ambient-ink','ambient-bloom'
+];
+const BG_MANAGER_MODES = new Set(['aurora','mesh','particles','ink','bloom']);
+
+function applyAmbientBg(mode) {
+  ambientBgMode = mode;
+  localStorage.setItem(LS_AMBIENT_BG, mode);
+
+  // Stop any manager-owned background
+  if (window.BackgroundManager) window.BackgroundManager.deactivate();
+
+  // Clear all ambient body classes
+  document.body.classList.remove(...ALL_AMBIENT_CLASSES);
+
+  if (mode === 'spline') {
+    if (splineIframe && !splineLoaded) { splineIframe.src = SPLINE_URL; splineLoaded = true; }
+    window._bgTheme = 'orbs';
+    document.body.classList.add('ambient-spline');
+  } else if (mode === 'lights') {
+    window._bgTheme = 'orbs';
+    document.body.classList.add('ambient-lights');
+  } else if (mode === 'simple') {
+    window._bgTheme = 'orbs';
+    document.body.classList.add('ambient-simple');
+  } else if (BG_MANAGER_MODES.has(mode)) {
+    window._bgTheme = 'orbs';
+    document.body.classList.add('ambient-' + mode);
+    if (window.BackgroundManager) window.BackgroundManager.activate(mode);
+  } else {
+    // 'goo'
+    window._bgTheme = 'liquid';
+  }
+  updateBgMenuActive();
+}
+
 function enterAmbient() {
   if (isAmbient) return;
   if (isFullscreen) exitFullscreen();
   isAmbient = true;
   syncAmbientTrackInfo();
+  applyAmbientBg(ambientBgMode);
   const card = document.querySelector('.card');
   card.style.transition = 'opacity 380ms ease, transform 380ms ease';
   card.style.opacity    = '0';
@@ -1882,16 +1967,39 @@ function enterAmbient() {
 function exitAmbient() {
   if (!isAmbient) return;
   isAmbient = false;
+  window._bgTheme = 'orbs';
+  document.body.classList.remove(...ALL_AMBIENT_CLASSES);
+  if (window.BackgroundManager) window.BackgroundManager.deactivate();
   if (ambientOverlay) ambientOverlay.classList.remove('visible');
   document.body.classList.remove('ambient-mode');
+  if (ambientBgMenu) ambientBgMenu.classList.add('hidden');
   const card = document.querySelector('.card');
   card.style.opacity   = '0';
   card.style.transform = 'scale(0.96)';
-  card.offsetHeight; // force reflow
+  card.offsetHeight;
   card.style.transition = 'opacity 380ms ease, transform 380ms ease';
   card.style.opacity    = '1';
   card.style.transform  = 'scale(1)';
   setTimeout(() => { card.style.cssText = ''; }, 420);
+}
+
+// Background menu toggle
+if (ambientBgCycleBtn && ambientBgMenu) {
+  updateBgMenuActive();
+  ambientBgCycleBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    ambientBgMenu.classList.toggle('hidden');
+  });
+  ambientBgOptions.forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      applyAmbientBg(btn.dataset.mode);
+      ambientBgMenu.classList.add('hidden');
+    });
+  });
+  document.addEventListener('click', () => {
+    if (!ambientBgMenu.classList.contains('hidden')) ambientBgMenu.classList.add('hidden');
+  });
 }
 
 if (ambientBtn) {
@@ -1959,31 +2067,9 @@ updatePlaybackControls();
 // Restore active service — rows start closed, don't auto-open on load
 updateMusicUI();
 
-// ── Background theme ─────────────────────────────────────────────────────────
-const LS_BG_THEME = 'covercolor_bg_theme';
-const bgOrbsBtn   = document.getElementById('bg-orbs-btn');
-const bgLiquidBtn = document.getElementById('bg-liquid-btn');
-
-function applyBgTheme(theme) {
-  document.body.classList.toggle('bg-theme-orbs',   theme === 'orbs');
-  document.body.classList.toggle('bg-theme-liquid',  theme === 'liquid');
-  if (bgOrbsBtn)   bgOrbsBtn.classList.toggle('active',   theme === 'orbs');
-  if (bgLiquidBtn) bgLiquidBtn.classList.toggle('active', theme === 'liquid');
-  // Signal liquid-glass.js to pause/resume its RAF loop
-  window._bgTheme = theme;
-}
-
-const savedBgTheme = localStorage.getItem(LS_BG_THEME) || 'liquid';
-applyBgTheme(savedBgTheme);
-
-if (bgOrbsBtn) bgOrbsBtn.addEventListener('click', () => {
-  localStorage.setItem(LS_BG_THEME, 'orbs');
-  applyBgTheme('orbs');
-});
-if (bgLiquidBtn) bgLiquidBtn.addEventListener('click', () => {
-  localStorage.setItem(LS_BG_THEME, 'liquid');
-  applyBgTheme('liquid');
-});
+// ── Background — goo only in immersive, orbs always on main UI ───────────────
+// WebGL RAF is started in enterAmbient() / stopped in exitAmbient()
+window._bgTheme = 'orbs'; // default: goo paused
 
 // ── Theme toggle ────────────────────────────────────────────────────────────
 const themeIconBtn  = document.getElementById('theme-icon-btn');

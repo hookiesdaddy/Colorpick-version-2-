@@ -8,11 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="/static/style.css?v=109" />
+  <link rel="stylesheet" href="/static/style.css?v=131" />
 </head>
 <body>
-  <canvas id="liquid-glass-bg" class="spline-bg" style="opacity:0"></canvas>
-  <!-- Orbs shown as fallback; faded out once WebGL canvas renders -->
+  <canvas id="liquid-glass-bg" class="spline-bg"></canvas>
+  <!-- Canvas opacity controlled by CSS: hidden by default, shown in ambient-mode -->
+  <iframe id="spline-iframe-bg" class="spline-iframe-bg" src="" frameborder="0" allowfullscreen></iframe>
+  <div id="spline-color-overlay"></div>
   <div class="bg-orbs">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -306,6 +308,79 @@
         </button>
       </header>
 
+      <!-- ── CoverColor ── -->
+      <section class="settings-section">
+        <div class="settings-row" id="covercolor-row">
+          <button class="settings-row-header" id="covercolor-row-btn" aria-expanded="false">
+            <div class="settings-row-left">
+              <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>
+              <span class="settings-row-name">CoverColor</span>
+            </div>
+            <svg class="settings-row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+          </button>
+          <div class="settings-row-body hidden" id="covercolor-config">
+
+            <p class="subsection-label">Interface</p>
+
+            <div class="poll-rate-row">
+              <div class="poll-rate-left">
+                <span class="toggle-label">Auto Cover Focus</span>
+                <span class="poll-rate-desc">Auto-hides controls when idle</span>
+              </div>
+              <div class="poll-rate-control">
+                <input type="range" id="fullscreen-delay-slider" min="0" max="4" step="1" value="0" />
+                <span id="fullscreen-delay-value">Off</span>
+              </div>
+            </div>
+
+            <label class="toggle-row">
+              <span class="toggle-label">
+                Pulse Background
+                <span class="poll-rate-desc" style="display:block;margin-top:0.1rem">Pulses the goo and glow to the beat</span>
+              </span>
+              <div class="toggle-switch">
+                <input type="checkbox" id="beat-pulse-toggle" />
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <label class="toggle-row">
+              <span class="toggle-label">Show color values</span>
+              <div class="toggle-switch">
+                <input type="checkbox" id="show-color-values-toggle" />
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
+
+            <div class="options-divider"></div>
+            <p class="subsection-label">Cache &amp; Poll</p>
+
+            <div class="poll-rate-row">
+              <div class="poll-rate-left">
+                <span class="toggle-label">Cache colors by album</span>
+                <span class="poll-rate-desc">Reuse extracted colors for the same album</span>
+              </div>
+              <div class="toggle-switch">
+                <input type="checkbox" id="cache-toggle" />
+                <span class="toggle-slider"></span>
+              </div>
+            </div>
+
+            <div class="poll-rate-row">
+              <div class="poll-rate-left">
+                <span class="toggle-label">Poll rate</span>
+                <span class="poll-rate-desc">How often to check what's playing</span>
+              </div>
+              <div class="poll-rate-control">
+                <input type="range" id="poll-rate-slider" min="0" max="3" step="1" value="1" />
+                <span id="poll-rate-value">10s</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       <!-- ── Music Services ── -->
       <section class="settings-section">
         <h3 class="section-title">Music Services</h3>
@@ -434,112 +509,24 @@
               <div id="govee-lan-status" class="key-status hidden"></div>
               <div id="govee-lan-checklist" class="device-checklist hidden"></div>
             </div>
+
+            <!-- ── Idle behavior ── -->
+            <div class="options-divider" style="margin: 0.85rem 0 0.6rem"></div>
+            <div class="poll-rate-row">
+              <div class="poll-rate-left">
+                <span class="toggle-label">When nothing's playing</span>
+                <span class="poll-rate-desc">What to do with lights when music stops</span>
+              </div>
+              <select id="idle-behavior-select" class="idle-behavior-select">
+                <option value="keep">Keep last color</option>
+                <option value="white">Go white</option>
+                <option value="off">Turn off</option>
+              </select>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="settings-section">
-        <h3 class="section-title">Sync</h3>
-
-        <div class="poll-rate-row">
-          <div class="poll-rate-left">
-            <span class="toggle-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
-              </svg>
-              Cache colors by album
-            </span>
-            <span class="poll-rate-desc">Reuse extracted colors for the same album</span>
-          </div>
-          <div class="toggle-switch">
-            <input type="checkbox" id="cache-toggle" />
-            <span class="toggle-slider"></span>
-          </div>
-        </div>
-
-        <div class="poll-rate-row">
-          <div class="poll-rate-left">
-            <span class="toggle-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Poll rate
-            </span>
-            <span class="poll-rate-desc">How often to check what's playing</span>
-          </div>
-          <div class="poll-rate-control">
-            <input type="range" id="poll-rate-slider" min="0" max="3" step="1" value="1" />
-            <span id="poll-rate-value">10s</span>
-          </div>
-        </div>
-
-        <div class="poll-rate-row">
-          <div class="poll-rate-left">
-            <span class="toggle-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.564A.562.562 0 0 1 9 14.437V9.564z" />
-              </svg>
-              When nothing's playing
-            </span>
-            <span class="poll-rate-desc">What to do with lights when music stops</span>
-          </div>
-          <select id="idle-behavior-select" class="idle-behavior-select">
-            <option value="keep">Keep last color</option>
-            <option value="white">Go white</option>
-            <option value="off">Turn off</option>
-          </select>
-        </div>
-      </section>
-
-      <!-- ── App section ── -->
-      <section class="settings-section">
-        <h3 class="section-title">App</h3>
-
-        <div class="poll-rate-row">
-          <div class="poll-rate-left">
-            <span class="toggle-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-              </svg>
-              Auto Cover Focus
-            </span>
-            <span class="poll-rate-desc">Auto-hides controls when idle</span>
-          </div>
-          <div class="poll-rate-control">
-            <input type="range" id="fullscreen-delay-slider" min="0" max="4" step="1" value="0" />
-            <span id="fullscreen-delay-value">Off</span>
-          </div>
-        </div>
-
-        <div class="poll-rate-row">
-          <div class="poll-rate-left">
-            <span class="toggle-label">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-              </svg>
-              Background
-            </span>
-            <span class="poll-rate-desc">Visual style for the background</span>
-          </div>
-          <div class="bg-theme-pills">
-            <button class="bg-theme-pill" id="bg-orbs-btn" data-bg="orbs">Glow</button>
-            <button class="bg-theme-pill" id="bg-liquid-btn" data-bg="liquid">Orb</button>
-          </div>
-        </div>
-
-        <label class="toggle-row">
-          <span class="toggle-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-            </svg>
-            Pulse to beat
-          </span>
-          <div class="toggle-switch">
-            <input type="checkbox" id="beat-pulse-toggle" />
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-      </section>
 
       <p id="app-version" class="app-version">covercolor</p>
     </div>
@@ -560,9 +547,39 @@
         <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg>
       </button>
     </div>
+    <div id="ambient-bg-wrap">
+      <button id="ambient-bg-cycle" aria-label="Switch background" title="Switch background">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l9 4.5-9 4.5-9-4.5L12 3zM3 12l9 4.5 9-4.5M3 16.5l9 4.5 9-4.5"/>
+        </svg>
+      </button>
+      <div id="ambient-bg-menu" class="hidden">
+        <button class="ambient-bg-option" data-mode="lights">Lights</button>
+        <button class="ambient-bg-option" data-mode="goo">Goop</button>
+        <button class="ambient-bg-option" data-mode="spline">Flow</button>
+        <button class="ambient-bg-option" data-mode="simple">Simple</button>
+        <button class="ambient-bg-option" data-mode="aurora">Aurora</button>
+        <button class="ambient-bg-option" data-mode="mesh">Mesh</button>
+        <button class="ambient-bg-option" data-mode="particles">Particles</button>
+        <button class="ambient-bg-option" data-mode="ink">Ink</button>
+        <button class="ambient-bg-option" data-mode="bloom">Bloom</button>
+      </div>
+    </div>
   </div>
 
-  <script src="/static/app.js?v=96"></script>
-  <script src="/static/liquid-glass.js?v=22"></script>
+  <div id="ambient-simple-bg"></div>
+  <canvas id="aurora-bg"    class="new-bg-canvas"></canvas>
+  <div    id="mesh-bg"      class="new-bg-canvas"></div>
+  <canvas id="ink-bg"       class="new-bg-canvas"></canvas>
+  <canvas id="canvas2d-bg"  class="new-bg-canvas"></canvas>
+
+  <script src="/static/backgrounds/manager.js?v=1"></script>
+  <script src="/static/backgrounds/aurora.js?v=1"></script>
+  <script src="/static/backgrounds/mesh.js?v=1"></script>
+  <script src="/static/backgrounds/particles.js?v=1"></script>
+  <script src="/static/backgrounds/ink.js?v=1"></script>
+  <script src="/static/backgrounds/bloom.js?v=1"></script>
+  <script src="/static/app.js?v=116"></script>
+  <script src="/static/liquid-glass.js?v=29"></script>
 </body>
 </html>
