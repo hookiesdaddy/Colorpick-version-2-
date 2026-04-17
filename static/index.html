@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="/static/style.css?v=133" />
+  <link rel="stylesheet" href="/static/style.css?v=134" />
 </head>
 <body>
   <canvas id="liquid-glass-bg" class="spline-bg"></canvas>
@@ -367,7 +367,7 @@
             <div class="options-divider"></div>
             <p class="subsection-label">Cache &amp; Poll</p>
 
-            <div class="poll-rate-row">
+            <label class="poll-rate-row" for="cache-toggle">
               <div class="poll-rate-left">
                 <span class="toggle-label">Cache colors by album</span>
                 <span class="poll-rate-desc">Reuse extracted colors for the same album</span>
@@ -376,7 +376,7 @@
                 <input type="checkbox" id="cache-toggle" />
                 <span class="toggle-slider"></span>
               </div>
-            </div>
+            </label>
 
             <div class="poll-rate-row">
               <div class="poll-rate-left">
@@ -499,7 +499,7 @@
 
             <!-- ── LAN control ── -->
             <div class="options-divider" style="margin: 0.85rem 0 0.6rem"></div>
-            <div class="poll-rate-row">
+            <label class="poll-rate-row" for="govee-lan-toggle">
               <div class="poll-rate-left">
                 <span class="toggle-label">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
@@ -513,7 +513,7 @@
                 <input type="checkbox" id="govee-lan-toggle" />
                 <span class="toggle-slider"></span>
               </div>
-            </div>
+            </label>
             <div id="govee-lan-section" class="hidden">
               <div class="api-btn-row" style="margin-top: 0.5rem">
                 <button id="govee-discover-btn" class="action-btn">Discover Devices</button>
