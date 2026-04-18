@@ -15,8 +15,7 @@ const prefsToggle       = document.getElementById('prefs-toggle');
 const prefsExpand       = document.getElementById('prefs-expand');
 const skipNeutralsToggle= document.getElementById('skip-neutrals-toggle');
 const rememberOptsToggle= document.getElementById('remember-opts-toggle');
-const setLightsBtn      = document.getElementById('set-lights-btn');
-const lightsStatus      = document.getElementById('lights-status');
+const syncError         = document.getElementById('sync-error');
 const errorDiv          = document.getElementById('error');
 const logoDot           = document.getElementById('logo-dot');
 const colorPrefsList    = document.getElementById('color-prefs-list');
@@ -27,7 +26,6 @@ const optionsBtn        = document.getElementById('options-btn');
 const optionsPanel      = document.getElementById('options-panel');
 const reloadHint        = document.getElementById('reload-hint');
 const reloadHintBtn     = document.getElementById('reload-hint-btn');
-const lightsProgress    = document.getElementById('lights-progress');
 const mainView          = document.getElementById('main-view');
 const settingsView      = document.getElementById('settings-view');
 const settingsBtn       = document.getElementById('settings-btn');
@@ -87,8 +85,6 @@ const npArt             = document.getElementById('np-art');
 const npArtWrap         = document.querySelector('.np-art-wrap');
 const npTitle           = document.getElementById('np-title');
 const npArtist          = document.getElementById('np-artist');
-const npSyncLabel       = document.getElementById('np-sync-label');
-const npSyncBadge       = document.getElementById('np-sync-badge');
 const colorGradientBox  = document.getElementById('color-gradient-box');
 const allToggleSwitches = document.querySelectorAll('.toggle-switch'); // cached — elements are static
 const cacheTog          = document.getElementById('cache-toggle');
@@ -160,13 +156,14 @@ let lastSentHex    = null; // last hex sent to Govee — skip if unchanged
 let idleActionSent = false; // true after idle behavior fired — reset on track detect
 let _goveeOk       = null; // null = never tried, true = last cmd OK, false = last cmd failed
 
-// ── Sync badge status ─────────────────────────────────────────────────────────
-// Single source of truth for the dot colour + label.
-// status: 'green' | 'orange' | 'grey' | 'red'
-function setSyncStatus(status, label) {
-  npSyncBadge.classList.remove('status-green', 'status-orange', 'status-grey', 'status-red');
-  npSyncBadge.classList.add(`status-${status}`);
-  npSyncLabel.textContent = label;
+// ── Light error display ───────────────────────────────────────────────────────
+function showLightError(msg) {
+  if (!syncError) return;
+  syncError.textContent = msg;
+  syncError.classList.remove('hidden');
+}
+function hideLightError() {
+  if (syncError) syncError.classList.add('hidden');
 }
 
 // ── LocalStorage ──────────────────────────────────────────────────────────────
@@ -415,11 +412,11 @@ async function dispatchLightColors(tPrimary, tSecondary, signal = null) {
       try {
         await Promise.all(sends);
         _goveeOk = true;
-        setSyncStatus('green', 'Synced ✓');
+        hideLightError();
       } catch (e) {
         if (e.name === 'AbortError') return;
         _goveeOk = false;
-        setSyncStatus('orange', 'Lights offline');
+        showLightError('Lights offline — check your connection');
       }
       return;
     }
@@ -441,11 +438,11 @@ async function dispatchLightColors(tPrimary, tSecondary, signal = null) {
   try {
     await Promise.all(sends);
     _goveeOk = true;
-    setSyncStatus('green', 'Synced ✓');
+    hideLightError();
   } catch (e) {
     if (e.name === 'AbortError') return;
     _goveeOk = false;
-    setSyncStatus('orange', 'Lights offline');
+    showLightError('Lights offline — check your connection');
   }
 }
 
@@ -553,7 +550,6 @@ function updateActiveChip() {
   allToggleSwitches.forEach(sw => {
     sw.style.setProperty('--toggle-active-color', activeHex);
   });
-  setLightsBtn.style.setProperty('--active-color', activeHex);
 }
 
 // ── Reload ────────────────────────────────────────────────────────────────────
@@ -606,55 +602,6 @@ secondaryChip.addEventListener('click', e => {
   updateActiveChip();
 });
 
-
-// ── Set Lights ────────────────────────────────────────────────────────────────
-setLightsBtn.addEventListener('click', async () => {
-  if (!lastPrimary) return;
-  setLightsBtn.disabled = true;
-  lightsStatus.classList.add('hidden');
-
-  const { r, g, b } = getLightColor();
-  const activeHex = `rgb(${r},${g},${b})`;
-  const apiKey = loadApiKey();
-
-  // Start progress bar
-  lightsProgress.className = 'lights-progress';
-  lightsProgress.style.setProperty('--active-color', activeHex);
-  lightsProgress.style.width = '0';
-  // Force reflow then animate
-  lightsProgress.getBoundingClientRect();
-  lightsProgress.classList.add('running');
-
-  try {
-    const fd = new FormData();
-    fd.append('r', r); fd.append('g', g); fd.append('b', b);
-    const headers = {};
-    if (apiKey) headers['X-Govee-Api-Key'] = apiKey;
-    const response = await fetch('/set-light', { method: 'POST', body: fd, headers });
-    const data = await response.json();
-
-    // Complete the bar
-    lightsProgress.classList.remove('running');
-    lightsProgress.classList.add('done');
-    setTimeout(() => { lightsProgress.className = 'lights-progress'; }, 600);
-
-    if (!response.ok) {
-      lightsStatus.textContent = data.detail || 'Failed to set lights.';
-      lightsStatus.className = 'lights-status error-status';
-    } else {
-      lightsStatus.textContent = data.lights.map(l => `${l.name}: ${l.status === 'ok' ? '✓' : l.status}`).join('  ·  ');
-      lightsStatus.className = 'lights-status ok-status';
-    }
-    lightsStatus.classList.remove('hidden');
-  } catch {
-    lightsProgress.className = 'lights-progress';
-    lightsStatus.textContent = 'Network error.';
-    lightsStatus.className = 'lights-status error-status';
-    lightsStatus.classList.remove('hidden');
-  } finally {
-    setLightsBtn.disabled = false;
-  }
-});
 
 // ── Copy hex ──────────────────────────────────────────────────────────────────
 hexPrimary.addEventListener('click', () => copyHex('primary'));
@@ -711,7 +658,6 @@ function showResult(data, { fromSync = false, name = null, size = null, skipHist
   hexSecondaryText.textContent = lastSecondary.hex.toUpperCase();
   rgbSecondary.textContent     = `${lastSecondary.rgb.r}, ${lastSecondary.rgb.g}, ${lastSecondary.rgb.b}`;
 
-  lightsStatus.classList.add('hidden');
   setTimeout(() => { result.classList.remove('hidden'); updateActiveChip(); }, 350);
 }
 
@@ -1161,14 +1107,6 @@ function updateMusicUI() {
   // npHero: always visible (music-only app now)
   npHero.classList.remove('hidden');
 
-  // Sync badge
-  const hasAnyCredentials = !!(localStorage.getItem(LS_SPOTIFY_TOKEN) ||
-    (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY)));
-  npSyncBadge.classList.remove('hidden');
-  if (!hasAnyCredentials) {
-    setSyncStatus('red', 'Connect a service');
-  }
-
   // Keep gradient visible when syncing and has colors
   if (syncOn && lastPrimary) result.classList.remove('hidden');
 
@@ -1197,25 +1135,18 @@ async function _lfmPollInner() {
           idleActionSent = false;
           updateMusicUI();
           document.body.classList.add('extracting');
-          setSyncStatus('grey', 'Syncing…');
           spotifyFetchBpm(track.id);
           await extractFromArt(track.art, `${track.title} — ${track.artist}`);
-        } else {
-          setSyncStatus(track.isLive ? (_goveeOk === false ? 'orange' : 'green') : 'grey',
-                        track.isLive ? (_goveeOk === false ? 'Lights offline' : 'Synced ✓') : 'Paused');
         }
         return;
       } else {
         npTitle.textContent = 'Nothing playing';
         npArtist.textContent = '';
-        setSyncStatus('grey', 'Waiting…');
         applyBpm(0);
         await triggerIdleBehavior();
         return;
       }
-    } catch (e) {
-      setSyncStatus('red', 'Spotify error');
-    }
+    } catch (e) { /* non-fatal */ }
   }
 
   const user = localStorage.getItem(LS_LFM_USER) || '';
@@ -1226,7 +1157,6 @@ async function _lfmPollInner() {
     if (!track) {
       npTitle.textContent     = 'Nothing playing';
       npArtist.textContent    = 'Is your scrobbler running?';
-      setSyncStatus('grey', 'Waiting…');
       await triggerIdleBehavior();
       return;
     }
@@ -1244,26 +1174,17 @@ async function _lfmPollInner() {
       idleActionSent = false;
       updateMusicUI();
       document.body.classList.add('extracting');
-      setSyncStatus('grey', track.isLive ? 'Syncing…' : 'Extracting…');
       await extractFromArt(track.art, `${track.title} — ${track.artist}`);
-    } else {
-      // Same track — just keep badge current
-      setSyncStatus(track.isLive ? (_goveeOk === false ? 'orange' : 'green') : 'grey',
-                    track.isLive ? (_goveeOk === false ? 'Lights offline' : 'Synced ✓') : 'Last played');
     }
   } catch (e) {
     npHero.classList.remove('syncing');
-    setSyncStatus('red', 'Connection error');
   }
 }
 
 // ── Extract colors from album art URL ─────────────────────────────────────────
 async function extractFromArt(artUrl, name = null) {
   const syncOn = localStorage.getItem(LS_LFM_SYNC) === 'true';
-  if (!artUrl) {
-    if (syncOn) setSyncStatus('grey', 'No artwork');
-    return;
-  }
+  if (!artUrl) return;
 
   // Capture generation — if a newer call starts, this one self-cancels
   const gen = ++extractGeneration;
@@ -1338,7 +1259,7 @@ async function extractFromArt(artUrl, name = null) {
   } catch (e) {
     if (e.name === 'AbortError') return; // cancelled cleanly — no UI update
     document.body.classList.remove('extracting');
-    if (syncOn) setSyncStatus('red', 'Sync error');
+    if (syncOn) showLightError('Sync error — could not extract colors');
   }
 }
 
@@ -1603,24 +1524,35 @@ if (showColorValuesToggle) {
 
 // ── Light brightness slider ───────────────────────────────────────────────────
 const lightBrightnessSlider = document.getElementById('light-brightness-slider');
-const lightBrightnessValue  = document.getElementById('light-brightness-value');
+let _brightnessDebounce = null;
+
+function updateBrightnessFill(v) {
+  if (!lightBrightnessSlider) return;
+  const pct = ((v - 10) / 90 * 100).toFixed(1) + '%';
+  lightBrightnessSlider.style.setProperty('--fill', pct);
+}
+
 (function initBrightnessSlider() {
   const saved = parseInt(localStorage.getItem(LS_LIGHT_BRIGHTNESS) ?? '100', 10);
   if (lightBrightnessSlider) lightBrightnessSlider.value = saved;
-  if (lightBrightnessValue)  lightBrightnessValue.textContent = saved + '%';
+  updateBrightnessFill(saved);
 })();
+
 if (lightBrightnessSlider) {
   lightBrightnessSlider.addEventListener('input', () => {
-    const v = lightBrightnessSlider.value;
-    if (lightBrightnessValue) lightBrightnessValue.textContent = v + '%';
+    const v = parseInt(lightBrightnessSlider.value, 10);
+    updateBrightnessFill(v);
     localStorage.setItem(LS_LIGHT_BRIGHTNESS, v);
-    // Re-send immediately with new brightness (don't wait for next poll)
-    if (lastPrimary && localStorage.getItem(LS_LFM_SYNC) === 'true') {
-      const tP = applyBrightness(applyColorTransforms(lastPrimary.hex));
-      const tS = applyBrightness(applyColorTransforms(lastSecondary?.hex ?? lastPrimary.hex));
-      lastSentHex = `${tP}|${tS}`;
-      dispatchLightColors(tP, tS);
-    }
+    // Debounce light dispatch — Govee API can't handle rapid-fire calls
+    clearTimeout(_brightnessDebounce);
+    _brightnessDebounce = setTimeout(() => {
+      if (lastPrimary && localStorage.getItem(LS_LFM_SYNC) === 'true') {
+        const tP = applyBrightness(applyColorTransforms(lastPrimary.hex));
+        const tS = applyBrightness(applyColorTransforms(lastSecondary?.hex ?? lastPrimary.hex));
+        lastSentHex = `${tP}|${tS}`;
+        dispatchLightColors(tP, tS);
+      }
+    }, 600);
   });
 }
 
@@ -1744,7 +1676,6 @@ async function skipAndRefresh(direction) {
   // Immediately fade the art and show loading state while we wait for the next track
   npArt.style.opacity = '0';
   npArtWrap.classList.add('art-loading');
-  setSyncStatus('grey', 'Skipping…');
   await spotifyPlayerAction(direction);
   // Debounce: only fire one poll even if user skips rapidly
   lfmLastTrackKey = null;
@@ -1777,12 +1708,6 @@ connectPromptBtn.addEventListener('click', () => {
   settingsView.classList.remove('hidden');
 });
 
-// ── Sync badge: click opens settings when no service connected ────────────────
-npSyncBadge.addEventListener('click', () => {
-  const hasAnyCredentials = !!(localStorage.getItem(LS_SPOTIFY_TOKEN) ||
-    (localStorage.getItem(LS_LFM_USER) && localStorage.getItem(LS_LFM_KEY)));
-  if (!hasAnyCredentials) showView(settingsView, mainView, 'forward');
-});
 
 // ── Fullscreen / display mode ─────────────────────────────────────────────────
 let isFullscreen  = false;
@@ -1803,7 +1728,6 @@ function enterFullscreen() {
   const controlsBar = document.querySelector('.controls-bar');
   const result      = document.getElementById('result');
   const mainViewEl  = document.getElementById('main-view');
-  const npSyncBadge = document.getElementById('np-sync-badge');
   const card        = document.querySelector('.card');
 
   // Measure before any DOM changes
@@ -1827,20 +1751,18 @@ function enterFullscreen() {
   if (header)               header.style.transition = tCollapse;
   if (controlsBar)          controlsBar.style.transition = tCollapse;
   if (result && resultH > 0) result.style.transition = tCollapse;
-  if (npSyncBadge)          npSyncBadge.style.transition = `opacity ${Math.round(FS_DUR * 0.5)}ms ease`;
   mainViewEl.style.transition = `gap ${FS_DUR}ms cubic-bezier(0.4,0,0.2,1)`;
 
   // Trigger collapse
   if (header)               { header.style.height = '0';      header.style.opacity = '0'; }
   if (controlsBar)          { controlsBar.style.height = '0'; controlsBar.style.opacity = '0'; }
   if (result && resultH > 0){ result.style.height = '0';      result.style.opacity = '0'; }
-  if (npSyncBadge)          npSyncBadge.style.opacity = '0';
   mainViewEl.style.gap = '0';
 
   // After animation: lock in with fullscreen-mode (display:none) and clear inline styles
   setTimeout(() => {
     document.body.classList.add('fullscreen-mode');
-    [header, controlsBar, result, npSyncBadge].forEach(el => { if (el) el.style.cssText = ''; });
+    [header, controlsBar, result].forEach(el => { if (el) el.style.cssText = ''; });
     mainViewEl.style.cssText = '';
   }, FS_DUR + 40);
 }
@@ -1853,7 +1775,6 @@ function exitFullscreen() {
   const controlsBar = document.querySelector('.controls-bar');
   const result      = document.getElementById('result');
   const mainViewEl  = document.getElementById('main-view');
-  const npSyncBadge = document.getElementById('np-sync-badge');
   const card        = document.querySelector('.card');
 
   const { headerH = 0, controlsH = 0, resultH = 0, gapVal = 0 } = _savedHeights || {};
@@ -1863,7 +1784,6 @@ function exitFullscreen() {
   if (header)               { header.style.height = '0';      header.style.overflow = 'hidden'; header.style.opacity = '0'; }
   if (controlsBar)          { controlsBar.style.height = '0'; controlsBar.style.overflow = 'hidden'; controlsBar.style.opacity = '0'; }
   if (result && resultH > 0){ result.style.height = '0';      result.style.overflow = 'hidden'; result.style.opacity = '0'; }
-  if (npSyncBadge)          npSyncBadge.style.opacity = '0';
   mainViewEl.style.gap = '0';
 
   // Remove fullscreen-mode — chrome re-enters layout but is already pinned at height 0
@@ -1878,19 +1798,17 @@ function exitFullscreen() {
   if (header)               header.style.transition = tExpand;
   if (controlsBar)          controlsBar.style.transition = tExpand;
   if (result && resultH > 0) result.style.transition = tExpand;
-  if (npSyncBadge)          npSyncBadge.style.transition = `opacity ${Math.round(FS_DUR * 0.65)}ms ease`;
   mainViewEl.style.transition = `gap ${FS_DUR}ms cubic-bezier(0.4,0,0.2,1)`;
 
   // Expand back to saved heights
   if (header && headerH)           { header.style.height = headerH + 'px';        header.style.opacity = '1'; }
   if (controlsBar && controlsH)    { controlsBar.style.height = controlsH + 'px'; controlsBar.style.opacity = '1'; }
   if (result && resultH > 0)       { result.style.height = resultH + 'px';        result.style.opacity = '1'; }
-  if (npSyncBadge)                 npSyncBadge.style.opacity = '1';
   mainViewEl.style.gap = gapVal + 'px';
 
   // After animation: clear inline styles and reset flag
   setTimeout(() => {
-    [header, controlsBar, result, npSyncBadge].forEach(el => { if (el) el.style.cssText = ''; });
+    [header, controlsBar, result].forEach(el => { if (el) el.style.cssText = ''; });
     mainViewEl.style.cssText = '';
     fsExiting = false;
   }, FS_DUR + 40);

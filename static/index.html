@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="/static/style.css?v=134" />
+  <link rel="stylesheet" href="/static/style.css?v=135" />
 </head>
 <body>
   <canvas id="liquid-glass-bg" class="spline-bg"></canvas>
@@ -21,6 +21,11 @@
   </div>
 
   <div class="card">
+
+    <!-- ── Brightness side slider ── -->
+    <div class="brightness-side" id="brightness-side" title="Light brightness">
+      <input type="range" id="light-brightness-slider" min="10" max="100" step="1" value="100" class="brightness-side-slider" orient="vertical" />
+    </div>
 
     <!-- ── Main view ── -->
     <div id="main-view">
@@ -71,10 +76,6 @@
             </svg>
           </div>
         </div>
-        <div class="np-sync-badge" id="np-sync-badge" role="button" tabindex="0" title="Click to pause/resume light sync" style="cursor:pointer">
-          <span class="np-dot"></span>
-          <span id="np-sync-label">Waiting…</span>
-        </div>
         <div id="np-title" class="np-title">Nothing playing</div>
         <div id="np-artist" class="np-artist">—</div>
         <div id="playback-controls" class="playback-controls hidden">
@@ -94,6 +95,7 @@
       <!-- ── Color result ── -->
       <div id="result" class="result hidden">
         <div class="color-gradient-box" id="color-gradient-box"></div>
+        <div id="sync-error" class="sync-error hidden"></div>
         <div class="color-row">
           <div class="color-chip" id="primary-chip" title="Click to use this color">
             <span class="color-label">Primary</span>
@@ -118,23 +120,11 @@
             <span class="copied-toast hidden" data-for="secondary">Copied!</span>
           </div>
         </div>
-        <button id="set-lights-btn" class="set-lights-btn">
-          <span class="set-lights-text">Set Lights</span>
-          <span class="lights-progress" id="lights-progress"></span>
-        </button>
-        <div id="lights-status" class="lights-status hidden"></div>
       </div>
 
 
       <!-- ── Controls bar ── -->
       <div class="controls-bar">
-        <div class="brightness-row" id="brightness-row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14" style="flex-shrink:0;opacity:0.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z" />
-          </svg>
-          <input type="range" id="light-brightness-slider" min="10" max="100" step="5" value="100" class="brightness-slider" />
-          <span id="light-brightness-value" class="brightness-value">100%</span>
-        </div>
         <div class="controls-row">
           <button class="options-btn" id="options-btn" aria-label="Customize">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -591,7 +581,7 @@
   <script src="/static/backgrounds/particles.js?v=1"></script>
   <script src="/static/backgrounds/ink.js?v=1"></script>
   <script src="/static/backgrounds/bloom.js?v=1"></script>
-  <script src="/static/app.js?v=119"></script>
+  <script src="/static/app.js?v=120"></script>
   <script src="/static/liquid-glass.js?v=29"></script>
 </body>
 </html>
